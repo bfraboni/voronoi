@@ -37,3 +37,9 @@ project("voronoi")
 	kind "ConsoleApp"
 	targetdir "bin"
 	files { "src/gKit/*", "src/main.cpp" }
+
+project("test-kdtree")
+	language "C++"
+	kind "ConsoleApp"
+	targetdir "bin"
+	files { "src/gKit/*", "src/test/kdtree.cpp" }
