@@ -43,3 +43,17 @@ project("test-kdtree")
 	kind "ConsoleApp"
 	targetdir "bin"
 	files { "src/gKit/*", "src/test/kdtree.cpp" }
+
+project("test-point")
+	language "C++"
+	kind "ConsoleApp"
+	targetdir "bin"
+	includedirs { "src/" }
+	files { "src/gKit/*", "src/*.h", "src/test/point.cpp" }
+
+project("test-nkdtree")
+	language "C++"
+	kind "ConsoleApp"
+	targetdir "bin"
+	includedirs { "src/" }
+	files { "src/gKit/*", "src/*.h", "src/test/nkdtree.cpp" }
