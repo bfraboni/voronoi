@@ -9,12 +9,6 @@
 #include "image.h"
 #include "image_io.h"
 
-// template<int N>
-// struct Point
-// {
-//     float coords[N];
-// };
-
 inline float square( float a ) { return a * a; }
 
 inline float distance (const vec2& a, const vec2& b, const int p = 2 )

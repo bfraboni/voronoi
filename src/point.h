@@ -79,7 +79,7 @@ namespace kdtree
         {
             float sum = 0.0;
             for(int i = 0; i < N; ++i)
-                sum += (a[i] - b[i]) * (a[i] - b[i]);
+                sum += std::abs(a[i] - b[i]) * std::abs(a[i] - b[i]);
             return std::sqrt(sum);
         }
     };

@@ -15,7 +15,7 @@ namespace kdtree
         int left = -1, right = -1;
     };
 
-    template<int N>        
+    template<int N, int P>        
     struct KDTree
     {
         typedef KDNode<N> node_type;
@@ -58,22 +58,20 @@ namespace kdtree
             return (int) nodes.size() - 1;
         }
 
-        template<int P = 2>
-        int nearest( const point_type& query, distance<N,P> dist_type )
+        int nearest( const point_type& query )
         {
             float dmin = std::numeric_limits<float>::max();
-            int best = -1;
-            nearest_recursive( query, (int) nodes.size() - 1, 0, dmin, best, dist_type );
+            int best = 0;
+            nearest_recursive( query, (int) nodes.size() - 1, 0, dmin, best );
             return best;
         }
 
-        template<int P = 2>
-        void nearest_recursive( const point_type& query, const int id, const int depth, float& dmin, int& best, distance<N,P> dist_type ) 
+        void nearest_recursive( const point_type& query, const int id, const int depth, float& dmin, int& best ) 
         {
             if( id < 0 ) return;
 
             // printf("search %d\n", id);
-            float d = dist_type()(query, nodes[id].point);
+            float d = kdtree::distance<N,P>()(query, nodes[id].point);
             int axis = depth % N;
             float dx = query[axis] - nodes[id].point[axis];
 
@@ -81,17 +79,16 @@ namespace kdtree
             {
                 best = id;
                 dmin = d;
-                // printf("\tbest %d %f\n", best, dmin);
             }
 
             int near = dx <= 0 ? nodes[id].left : nodes[id].right;
             int far = dx <= 0 ? nodes[id].right : nodes[id].left;
 
-            search_recursive( query, near, depth+1, dmin, best );
+            nearest_recursive( query, near, depth+1, dmin, best );
             
-            if( dx * dx >= dmin ) return;
+            if( std::abs(dx) >= dmin ) return;
             
-            search_recursive( query, far, depth+1, dmin, best );
+            nearest_recursive( query, far, depth+1, dmin, best );
         }
 
         void print( const std::string& prefix, const int node, bool isleft )
@@ -99,7 +96,7 @@ namespace kdtree
             if( node < 0 || node >= (int)nodes.size() ) return;
             std::cout << prefix;
             std::cout << (isleft ? "├──" : "└──" );
-            std::cout << nodes[node].point;
+            std::cout << node << " " << nodes[node].point;
             print( prefix + (isleft ? "│   " : "    "), nodes[node].left, true);
             print( prefix + (isleft ? "│   " : "    "), nodes[node].right, false);
         }
