@@ -117,7 +117,7 @@ int main( int argc, char * argv[] )
 {
     int sites = atoi(argv[1]);
     Image image = read_image(argv[2]);
-    int dtype = atoi(argv[4]);
+    int dtype = argc > 4 ? atoi(argv[4]) : 2;
 
     Voronoi voronoi;
 

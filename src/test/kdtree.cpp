@@ -15,6 +15,27 @@
 //     float coords[N];
 // };
 
+inline float square( float a ) { return a * a; }
+
+inline float distance (const vec2& a, const vec2& b, const int p = 2 )
+{
+    // Manhattan
+    if( p == 1 )
+        return std::abs(a.x - b.x) + std::abs(a.y - b.y);
+    // Euclidean
+    else if( p == 2 )
+        return std::sqrt(square(a.x - b.x) + square(a.y - b.y));
+    // Tchebychev
+    else if( p == -1 )
+        return std::max(std::abs(a.x - b.x), std::abs(a.y - b.y));
+    // Minkowski
+    else if( p > 2 )
+        return std::pow(std::pow(std::abs(a.x - b.x), p) + std::pow(std::abs(a.y - b.y), p), 1.f / p);
+    // no distance
+    else
+        return 0;
+}
+
 struct KDNode
 {   
     // childs
@@ -70,25 +91,45 @@ struct KDTree
 
     int search( const vec2& position )
     {
-        // 1 On cherche à placer le point C dans l'arbre, on applique donc l'algorithme d'insertion.
-        // 2 Une fois arrivé à une feuille, ce point est sauvegardé comme étant le « meilleur candidat pour l'instant ».
-        // 3 On remonte l'arbre :
-        //     1 Si le nœud courant est plus proche, il devient le meilleur candidat ;
-        //     2 On détermine si une partie de la cellule située de l'autre côté de l'hyperplan délimité par le nœud peut contenir un point plus proche. Pour cela, on détermine l'intersection de l'hyperplan avec la boule de recherche3 :
-        //         si la boule de recherche traverse l'hyperplan, on effectue une recherche en descendant la branche correspondante ;
-        //         sinon, on élimine la branche et on continue à remonter l'arbre.
-        // 4 On s'arrête à la racine.
+        float dmin = std::numeric_limits<float>::max();
+        int best = -1;
+        search_recursive( position, (int) nodes.size() - 1, 0, dmin, best );
+        return best;
     }
+
+    void search_recursive(const vec2& position, const int id, const int depth, float& dmin, int& best) 
+    {
+        if( id < 0 ) return;
+
+        printf("search %d\n", id);
+        float d = distance(position, nodes[id].position);
+        int axis = depth % 2;
+        float dx = axis ? position.x - nodes[id].position.x : position.y - nodes[id].position.y;
+
+        if(d < dmin) 
+        {
+            best = id;
+            dmin = d;
+            printf("\tbest %d %f\n", best, dmin);
+        }
+
+        int near = dx <= 0 ? nodes[id].left : nodes[id].right;
+        int far = dx <= 0 ? nodes[id].right : nodes[id].left;
+
+        search_recursive( position, near, depth+1, dmin, best );
+        
+        if( square(dx) >= dmin ) return;
+        
+        search_recursive(position, far, depth+1, dmin, best );
+    }
+
 
     void print( const std::string& prefix, const int node, bool isleft )
     {
         if( node < 0 || node >= (int)nodes.size() ) return;
-
         std::cout << prefix;
         std::cout << (isleft ? "├──" : "└──" );
         printf("(%.3f,%.3f)\n", nodes[node].position.x, nodes[node].position.y);
-        // std::cout << "(" << nodes[node].position.x << "," << nodes[node].position.x << ")" << std::endl;
-        
         print( prefix + (isleft ? "│   " : "    "), nodes[node].left, true);
         print( prefix + (isleft ? "│   " : "    "), nodes[node].right, false);
     }
@@ -103,7 +144,7 @@ int main( int argc, char * argv[] )
 
     // generate sites position
     std::vector<vec2> v;
-    for(int i = 0; i < 10; i++)
+    for(int i = 0; i < 200; i++)
     {
         v.push_back(vec2(distribution(rng), distribution(rng)));
         // printf("%f %f\n", v.back().x, v.back().y);
@@ -111,6 +152,27 @@ int main( int argc, char * argv[] )
 
     // KDTree construction
     KDTree kdtree(v);
+
+    // KDTree search
+    vec2 test(0.2,0.2);
+    printf("nearest kdtree search: %d\n\n", kdtree.search( test ));
+
+    // Exhaustive search
+    int best = -1;
+    float dmin = std::numeric_limits<float>::max();
+    for(int i = 0; i < (int)kdtree.nodes.size(); i++)
+    {
+        printf("search %d\n", i);
+        float d = distance(kdtree.nodes[i].position, test); 
+        if( d < dmin )
+        {
+            best = i;
+            dmin = d;
+            printf("\tbest %d %f\n", best, dmin);
+        }
+    }
+    printf("nearest exhaustive search: %d\n\n", best);
+
 
 
     return 0;
