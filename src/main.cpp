@@ -9,38 +9,21 @@
 #include "image.h"
 #include "image_io.h"
 
+#include "kdtree.h"
 
-inline float square( float a ) { return a * a; }
+typedef kdtree::Point<2> Point2;
+typedef kdtree::KDTree<2> KDTree2;
+typedef std::vector<Point2> Voronoi2;
 
-inline float distance (const vec2& a, const vec2& b, const int p = 2 )
+int main( int argc, char * argv[] )
 {
-    // Manhattan
-    if( p == 1 )
-        return std::abs(a.x - b.x) + std::abs(a.y - b.y);
-    // Euclidean
-    else if( p == 2 )
-        return std::sqrt(square(a.x - b.x) + square(a.y - b.y));
-    // Tchebychev
-    else if( p == -1 )
-        return std::max(std::abs(a.x - b.x), std::abs(a.y - b.y));
-    // Minkowski
-    else if( p > 2 )
-        return std::pow(std::pow(std::abs(a.x - b.x), p) + std::pow(std::abs(a.y - b.y), p), 1.f / p);
-    // no distance
-    else
-        return 0;
-}
+    if(argc < 4 || argc > 5)
+        printf("usage : voronoi <sites> <input> <output> [metric]");
 
-struct Site
-{
-    vec2 position;
-    Color color;
-};
+    int sites = atoi(argv[1]);
+    Image image = read_image(argv[2]);
+    int dtype = argc > 4 ? atoi(argv[4]) : 2;
 
-typedef std::vector<Site> Voronoi;
-
-Image random_voronoisation(const Image& image, Voronoi& voronoi, int sites, int dtype = 2)
-{
     // image size
     int size = image.width() * image.height();
 
@@ -49,55 +32,40 @@ Image random_voronoisation(const Image& image, Voronoi& voronoi, int sites, int 
     std::mt19937 rng(dev());
     std::uniform_real_distribution<float> distribution(0.f,1.f);
 
-    // generate sites position
+    // generate sites position randomly
+    Voronoi2 voronoi2;
     for(int i = 0; i < sites; i++)
     {
         float y = distribution(rng) * image.width();
         float x = distribution(rng) * image.height();
-        vec2 position(x, y);
-        voronoi.push_back({position, Black()});
+        voronoi2.push_back({x, y});
     } 
+
+    // build kdtree for nearest neighbour search
+    KDTree2 kdtree(voronoi2);
 
     // output image
     Image out(image.width(), image.height());
 
-    // compute sites colors and output image
+    // compute sites colors
+    std::vector<Color> colors( voronoi2.size() );
     #pragma omp for
     for( int i = 0; i < image.width(); i++ )
     for( int j = 0; j < image.height(); j++ )
     {   
-        // find nearest site for this pixel
-        int id = -1;
-        float dmin = std::numeric_limits<float>::max();
-        vec2 current(i,j);
-        for( int k = 0; k < sites; k++ )
-        {   
-            Site& site = voronoi[k];
-            float d = distance(site.position, current, dtype);
-            if( d < dmin )
-            {
-                dmin = d;
-                id = k;
-            }
-        }
-        // printf("nearest : %d %d %d %f\n", i, j, id, dmin);
+        Point2 pixel = {(float)i, (float)j};
+        int id = kdtree.nearest( pixel );
+        assert(id >= 0);
         
         // maj site mean
-        assert(id >= 0);
-        Site& nearest = voronoi[id];
-
-        #pragma omp atomic
-        nearest.color.r += image(i,j).r;
-        #pragma omp atomic
-        nearest.color.g += image(i,j).g;
-        #pragma omp atomic
-        nearest.color.b += image(i,j).b;
-        #pragma omp atomic
-        nearest.color.a += 1;
+        for( int k = 0; k < 4; k++ )
+        {
+            #pragma omp atomic
+            colors[id](k) += image(i,j)(k);
+        }
 
         // maj image
         out(i,j).r = id;
-        out(i,j).g = dmin;
     }
 
     // compute new image
@@ -105,23 +73,12 @@ Image random_voronoisation(const Image& image, Voronoi& voronoi, int sites, int 
     for( int i = 0; i < image.width(); i++ )
     for( int j = 0; j < image.height(); j++ )
     {
-        Site& nearest = voronoi[out(i,j).r];
-        if( nearest.color.a > 0 )
-            out(i,j) = nearest.color / nearest.color.a;
+        int id = out(i,j).r;
+        if( colors[id].a > 0 )
+            out(i,j) = colors[id] / colors[id].a;
     }
 
-    return out;
-}
-
-int main( int argc, char * argv[] )
-{
-    int sites = atoi(argv[1]);
-    Image image = read_image(argv[2]);
-    int dtype = argc > 4 ? atoi(argv[4]) : 2;
-
-    Voronoi voronoi;
-
-    write_image(random_voronoisation(image, voronoi, sites, dtype), argv[3]);
+    write_image(out, argv[3]);
 
     return 0;
 }

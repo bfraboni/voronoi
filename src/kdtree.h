@@ -15,7 +15,7 @@ namespace kdtree
         int left = -1, right = -1;
     };
 
-    template<int N, int P>        
+    template<int N, int P = 2>        
     struct KDTree
     {
         typedef KDNode<N> node_type;
@@ -26,8 +26,8 @@ namespace kdtree
         KDTree(std::vector<point_type>& points)
         {
             build(points, 0, points.size(), 0);
-            printf("nodes %d\n", (int) nodes.size());
-            print(std::string(), (int) nodes.size()-1, false);
+            // printf("nodes %d\n", (int) nodes.size());
+            // print(std::string(), (int) nodes.size()-1, false);
         }
 
         int build(std::vector<point_type>& points, const int begin, const int end, const int depth )
@@ -62,11 +62,11 @@ namespace kdtree
         {
             float dmin = std::numeric_limits<float>::max();
             int best = 0;
-            nearest_recursive( query, (int) nodes.size() - 1, 0, dmin, best );
+            nearest( query, (int) nodes.size() - 1, 0, dmin, best );
             return best;
         }
 
-        void nearest_recursive( const point_type& query, const int id, const int depth, float& dmin, int& best ) 
+        void nearest( const point_type& query, const int id, const int depth, float& dmin, int& best ) 
         {
             if( id < 0 ) return;
 
@@ -84,11 +84,11 @@ namespace kdtree
             int near = dx <= 0 ? nodes[id].left : nodes[id].right;
             int far = dx <= 0 ? nodes[id].right : nodes[id].left;
 
-            nearest_recursive( query, near, depth+1, dmin, best );
+            nearest( query, near, depth+1, dmin, best );
             
             if( std::abs(dx) >= dmin ) return;
             
-            nearest_recursive( query, far, depth+1, dmin, best );
+            nearest( query, far, depth+1, dmin, best );
         }
 
         void print( const std::string& prefix, const int node, bool isleft )

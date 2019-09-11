@@ -21,6 +21,10 @@ struct Color
     Color( const Color& color, const float alpha ) : r(color.r), g(color.g), b(color.b), a(alpha) {}  // remplace alpha.
     
     float power( ) const;
+
+    //! renvoie la ieme composante de la couleur.
+    float operator() ( const unsigned int i ) const { return (&r)[i]; }
+    float& operator() ( const unsigned int i ) { return (&r)[i]; }
     
     float r, g, b, a;
 };

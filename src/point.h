@@ -45,7 +45,7 @@ namespace kdtree
         return !(a == b);
     }
 
-    // Minkowski distance
+    // P > 2 : Minkowski distance
     template<int N, int P>
     struct distance
     {
@@ -58,7 +58,7 @@ namespace kdtree
         }
     };
 
-    // Manhattan distance
+    // P = 1 : Manhattan distance
     template<int N>
     struct distance <N, 1>
     {
@@ -71,7 +71,7 @@ namespace kdtree
         }
     };
 
-    // Euclidean distance
+    // P = 2 : Euclidean distance
     template<int N>
     struct distance <N, 2>
     {
@@ -84,7 +84,7 @@ namespace kdtree
         }
     };
 
-    // Tchebychev distance
+    // P = inf : Tchebychev distance
     template<int N>
     struct distance <N, std::numeric_limits<int>::max()>
     {
