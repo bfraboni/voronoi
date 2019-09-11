@@ -1,5 +1,5 @@
-#ifndef POINTN_H
-#define POINTN_H
+#ifndef KDTREE_H
+#define KDTREE_H
 
 #include <cmath>
 #include <limits>

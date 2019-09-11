@@ -36,6 +36,7 @@ project("voronoi")
 	language "C++"
 	kind "ConsoleApp"
 	targetdir "bin"
+	includedirs { "src/", "extern/" }
 	files { "src/gKit/*", "src/main.cpp" }
 
 project("test-kdtree")
