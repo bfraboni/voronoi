@@ -33,22 +33,22 @@ int main( int argc, char * argv[] )
     std::uniform_real_distribution<float> distribution(0.f,1.f);
 
     // generate sites position randomly
-    Voronoi2 voronoi2;
+    std::vector<Point2> sites;
     for(int i = 0; i < sites; i++)
     {
         float y = distribution(rng) * image.width();
         float x = distribution(rng) * image.height();
-        voronoi2.push_back({x, y});
+        sites.push_back({x, y});
     } 
 
     // build kdtree for nearest neighbour search
-    KDTree2 kdtree(voronoi2);
+    KDTree2 kdtree(sites);
 
     // output image
     Image out(image.width(), image.height());
 
     // compute sites colors
-    std::vector<Color> colors( voronoi2.size() );
+    std::vector<Color> colors( sites.size() );
     #pragma omp for
     for( int i = 0; i < image.width(); i++ )
     for( int j = 0; j < image.height(); j++ )
