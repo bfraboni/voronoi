@@ -159,9 +159,7 @@ struct Traverse
         // pixel start
         x = int(std::floor(x0)), y = int(std::floor(y0));
         // number of pixels to traverse
-        int n = 1;
-        int x_inc, y_inc;
-        float error;
+        n = 1;
 
         if (dx == 0)
         {
@@ -200,7 +198,7 @@ struct Traverse
         }
     }
 
-    void move()
+    Traverse& operator++()
     {
         if (error > 0)
         {
@@ -212,6 +210,8 @@ struct Traverse
             x += x_inc;
             error += dy;
         }
+
+        return *this;
     }
 };
 
@@ -265,14 +265,18 @@ int main( int argc, char * argv[] )
         tmp(i,j).r = id;
     }
 
-    // compute new image
+    // normalize cells colors
+    #pragma omp for
+    for( int i = 0; i < (int)colors.size(); i++ )
+        colors[i] = colors[i].a > 0 ? colors[i] / colors[i].a : Black();
+
+    // compute voronoi image
     #pragma omp for
     for( int i = 0; i < image.width(); i++ )
     for( int j = 0; j < image.height(); j++ )
     {
         int id = tmp(i,j).r;
-        if( colors[id].a > 0 )
-            tmp(i,j) = colors[id] / colors[id].a;
+        tmp(i,j) = colors[id];
     }
 
     Image out = tmp;
@@ -289,62 +293,64 @@ int main( int argc, char * argv[] )
     //
     // optimisation process
     // foreach cell compute the gradient of the objective function over edges
-    std::vector<float> gradients(graph.sites().size(), 0);
-    for(const auto& cell: graph.cells())
+    std::vector<vec2> gradients(graph.sites().size(), vec2(0,0));
+    #pragma omp for
+    for(int i = 0; i < (int)graph.cells().size(); i++)
     {   
-        int site = cell.site;
+        const auto& cell = graph.cells()[i];
         for(const auto& halfedge: cell.halfEdges)
         {
-            // get edge
+            // get current edge
             const auto& edge = graph.edges()[halfedge.edge];
             
             // integrate gradients over edge
             Traverse tr(edge.p0.x, edge.p0.y, edge.p1.x, edge.p1.y);
-            for( int n = tr.n; n > 0; --n )
+            for( int nb = tr.n; nb > 0; --nb, ++tr )
             {
                 int current = cell.site;
-                int neighbor = halfedge.site;
+                int neighbor = edge.leftSite == current ? edge.rightSite : edge.leftSite;
 
-                Color& color_pixel = image(tr.x, tr.y);  
-                Color& color_current = colors[current];  
-                Color& color_neighbor = colors[neighbor];  
+                Color color_pixel = image(tr.x, tr.y);  
+                Color color_current = colors[current];  
+                Color color_neighbor = colors[neighbor]; 
 
                 // color gradient
-                float g_current = ((color_pixel - color_current) * (color_pixel - color_current)).sum() 
-                float g_neighbor = ((color_pixel - color_neighbor) * (color_pixel - color_neighbor)).sum() 
+                float g_current = ((color_pixel - color_current) * (color_pixel - color_current)).sum() ;
+                float g_neighbor = ((color_pixel - color_neighbor) * (color_pixel - color_neighbor)).sum() ;
                 
                 // angular speed term
-                float tdx = -tr.dy;    
-                float tdy = tr.dx;
-                float norm = std::sqrt(tdx*tdx + tdy*tdy);
-                float nx /= norm;
-                float ny /= norm;
-                
-                float x = tr.x;
-                float y = tr.y;
+                vec2 n = normalize(vec2(tr.dy, -tr.dx));
+                vec2 p(tr.x, tr.y);
+                vec2 pc(graph.sites()[current].x, graph.sites()[current].y);
+                vec2 pn(graph.sites()[neighbor].x, graph.sites()[neighbor].y);
+                float dot_prod = dot(n, (pn - p));
+                vec2 vg = dot_prod > 0 ? (pc - p) / dot_prod : vec2(0,0);
 
-                float x_current = graph.sites()[current].x;
-                float y_current = graph.sites()[current].y;
-
-                float x_neighbor = graph.sites()[neighbor].x;
-                float y_neighbor = graph.sites()[neighbor].y;
-
-                float dot_prod = n.x * a.x + n.y * a.y;
-
-                gradients[cell.site] = (g_current - g_neighbor);
-
-                tr.move();
+                // integrate value
+                gradients[cell.site] = gradients[cell.site] + vg * (g_current - g_neighbor);
             }
         }
     }
 
-    
+    Image grad(image.width(), image.height());
+    // compute new image
+    #pragma omp for
+    for( int i = 0; i < image.width(); i++ )
+    for( int j = 0; j < image.height(); j++ )
+    {
+        Point2 pixel = {(float)i, (float)j};
+        int id = kdtree.nearest( pixel );
+        assert(id >= 0);
+        grad(i,j).r = gradients[id].x;
+        grad(i,j).g = gradients[id].y;
+    }
 
     // draw graph
-    // for (auto& edge: graph.edges()) 
-    //     WuLine(tmp, out, edge.p0.x, edge.p0.y, edge.p1.x, edge.p1.y, Color(0.75,0.75,0.75));
+    for (auto& edge: graph.edges()) 
+        WuLine(tmp, out, edge.p0.x, edge.p0.y, edge.p1.x, edge.p1.y, Color(0.75,0.75,0.75));
 
     write_image(out, argv[3]);
+    write_image(grad, "gradients.png");
 
     return 0;
 }

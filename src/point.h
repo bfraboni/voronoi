@@ -45,6 +45,51 @@ namespace kdtree
         return !(a == b);
     }
 
+    template <int N>
+    Point<N> operator+(const Point<N>& a, const Point<N>& b) 
+    {
+        Point<N> pt;
+        for(int i = 0; i < N; ++i)
+                pt[i] = a[i] + b[i];
+        return pt;
+    }
+
+    template <int N>
+    Point<N> operator-(const Point<N>& a, const Point<N>& b) 
+    {
+        Point<N> pt;
+        for(int i = 0; i < N; ++i)
+                pt[i] = a[i] - b[i];
+        return pt;
+    }
+
+    template <int N>
+    Point<N> operator/(const Point<N>& a, const Point<N>& b) 
+    {
+        Point<N> pt;
+        for(int i = 0; i < N; ++i)
+                pt[i] = a[i] / b[i];
+        return pt;
+    }
+
+    template <int N>
+    Point<N> operator*(const Point<N>& a, const Point<N>& b) 
+    {
+        Point<N> pt;
+        for(int i = 0; i < N; ++i)
+                pt[i] = a[i] * b[i];
+        return pt;
+    }
+
+    template <int N>
+    float dot(const Point<N>& a, const Point<N>& b) 
+    {
+        float res = 0;
+        for(int i = 0; i < N; ++i)
+                res += a[i] * b[i];
+        return res;
+    }
+
     // P > 2 : Minkowski distance
     template<int N, int P>
     struct distance

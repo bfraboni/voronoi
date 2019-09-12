@@ -139,6 +139,37 @@ struct vec2
     float x, y;
 };
 
+inline float dot(const vec2& a, const vec2& b) 
+{
+    return a.x * b.x + a.y * b.y;
+}
+
+inline vec2 operator-(const vec2& a, const vec2& b) 
+{
+    return vec2(a.x - b.x, a.y - b.y);
+}
+
+inline vec2 operator+(const vec2& a, const vec2& b) 
+{
+    return vec2(a.x + b.x, a.y + b.y);
+}
+
+inline vec2 operator/(const vec2& a, float v)
+{
+    return v != 0 ? vec2(a.x / v, a.y / v) : vec2(0,0);
+}
+
+inline vec2 operator*(const vec2& a, float v) 
+{
+    return vec2(a.x * v, a.y * v);
+}
+
+inline vec2 normalize(const vec2& n) 
+{
+    float v = std::sqrt(dot(n,n));
+    return v > 0 ? n / v : vec2(0,0);
+}
+
 
 //! vecteur generique, utilitaire.
 struct vec3
