@@ -6,6 +6,11 @@ float Color::power( ) const
     return (r+g+b) / 3.f;
 }
 
+float Color::sum( ) const
+{
+    return r+g+b;
+}
+
 Color Black( )
 {
     return Color(0, 0, 0);

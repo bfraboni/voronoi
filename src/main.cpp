@@ -3,6 +3,7 @@
 #include <random>
 #include <cstdlib>
 #include <cassert>
+#include <functional>
 
 #include "vec.h"
 #include "color.h"
@@ -59,8 +60,7 @@ void BresenhamLine( Image& image, float x1, float y1, float x2, float y2, const 
     }
 }
 
-
-void WuLine( Image& image, float x0, float y0, float x1, float y1, const Color& color ) 
+void WuLine( const Image& image, Image& output, float x0, float y0, float x1, float y1, const Color& color ) 
 {
     auto ipart = [](float x) -> int     {return int(std::floor(x));};
     auto round = [](float x) -> float   {return std::round(x);};
@@ -94,13 +94,13 @@ void WuLine( Image& image, float x0, float y0, float x1, float y1, const Color& 
         const int ypx11 = ipart(yend);
         if (steep) 
         {
-            image(ypx11, xpx11) = image(ypx11, xpx11) + rfpart(yend) * xgap * (color - image(ypx11, xpx11));
-            image(ypx11 + 1, xpx11) = image(ypx11 + 1, xpx11) + fpart(yend) * xgap * (color - image(ypx11+1, xpx11));
+            output(ypx11, xpx11) = image(ypx11, xpx11) + rfpart(yend) * xgap * (color - image(ypx11, xpx11));
+            output(ypx11 + 1, xpx11) = image(ypx11 + 1, xpx11) + fpart(yend) * xgap * (color - image(ypx11+1, xpx11));
         } 
         else 
         {
-            image(xpx11, ypx11) = image(xpx11, ypx11) + rfpart(yend) * xgap * (color - image(xpx11, ypx11));
-            image(xpx11, ypx11 + 1) = image(xpx11, ypx11 + 1) + fpart(yend) * xgap * (color - image(xpx11, ypx11 + 1));
+            output(xpx11, ypx11) = image(xpx11, ypx11) + rfpart(yend) * xgap * (color - image(xpx11, ypx11));
+            output(xpx11, ypx11 + 1) = image(xpx11, ypx11 + 1) + fpart(yend) * xgap * (color - image(xpx11, ypx11 + 1));
         }
         intery = yend + gradient;
     }
@@ -114,13 +114,13 @@ void WuLine( Image& image, float x0, float y0, float x1, float y1, const Color& 
         const int ypx12 = ipart(yend);
         if (steep) 
         {
-            image(ypx12, xpx12) = image(ypx12, xpx12) + rfpart(yend) * xgap *(color - image(ypx12, xpx12));
-            image(ypx12 + 1, xpx12) = image(ypx12 + 1, xpx12) +  fpart(yend) * xgap *(color - image(ypx12 + 1, xpx12));
+            output(ypx12, xpx12) = image(ypx12, xpx12) + rfpart(yend) * xgap *(color - image(ypx12, xpx12));
+            output(ypx12 + 1, xpx12) = image(ypx12 + 1, xpx12) +  fpart(yend) * xgap *(color - image(ypx12 + 1, xpx12));
         } 
         else 
         {
-            image(xpx12, ypx12) = image(xpx12, ypx12) + rfpart(yend) * xgap * (color - image(xpx12, ypx12));
-            image(xpx12, ypx12 + 1) = image(xpx12, ypx12 + 1) + fpart(yend) * xgap * (color - image(xpx12, ypx12 + 1));
+            output(xpx12, ypx12) = image(xpx12, ypx12) + rfpart(yend) * xgap * (color - image(xpx12, ypx12));
+            output(xpx12, ypx12 + 1) = image(xpx12, ypx12 + 1) + fpart(yend) * xgap * (color - image(xpx12, ypx12 + 1));
         }
     }
  
@@ -128,8 +128,8 @@ void WuLine( Image& image, float x0, float y0, float x1, float y1, const Color& 
     {
         for (int x = xpx11 + 1; x < xpx12; x++) 
         {
-            image(ipart(intery), x) = image(ipart(intery), x) + rfpart(intery) * (color - image(ipart(intery), x));
-            image(ipart(intery) + 1, x) = image(ipart(intery) + 1, x) +  fpart(intery) * (color - image(ipart(intery) + 1, x));
+            output(ipart(intery), x) = image(ipart(intery), x) + rfpart(intery) * (color - image(ipart(intery), x));
+            output(ipart(intery) + 1, x) = image(ipart(intery) + 1, x) +  fpart(intery) * (color - image(ipart(intery) + 1, x));
             intery += gradient;
         }
     } 
@@ -137,12 +137,83 @@ void WuLine( Image& image, float x0, float y0, float x1, float y1, const Color& 
     {
         for (int x = xpx11 + 1; x < xpx12; x++) 
         {
-            image(x, ipart(intery)) = image(x, ipart(intery)) + rfpart(intery) * (color - image(x, ipart(intery)));
-            image(x, ipart(intery) + 1) = image(x, ipart(intery) + 1) + fpart(intery) * (color - image(x, ipart(intery) + 1));
+            output(x, ipart(intery)) = image(x, ipart(intery)) + rfpart(intery) * (color - image(x, ipart(intery)));
+            output(x, ipart(intery) + 1) = image(x, ipart(intery) + 1) + fpart(intery) * (color - image(x, ipart(intery) + 1));
             intery += gradient;
         }
     }
 }
+
+// traverse all pixels under a line
+// https://stackoverflow.com/questions/3233522/elegant-clean-special-case-straight-line-grid-traversal-algorithm
+// https://playtechs.blogspot.com/2007/03/raytracing-on-grid.html
+struct Traverse
+{
+    float dx, dy, error;
+    int x, y, n, x_inc, y_inc;
+
+    explicit Traverse( float x0, float y0, float x1, float y1 )
+    {
+        // line slope
+        dx = std::fabs(x1 - x0), dy = std::fabs(y1 - y0);
+        // pixel start
+        x = int(std::floor(x0)), y = int(std::floor(y0));
+        // number of pixels to traverse
+        int n = 1;
+        int x_inc, y_inc;
+        float error;
+
+        if (dx == 0)
+        {
+            x_inc = 0;
+            error = std::numeric_limits<float>::infinity();
+        }
+        else if (x1 > x0)
+        {
+            x_inc = 1;
+            n += int(floor(x1)) - x;
+            error = (floor(x0) + 1 - x0) * dy;
+        }
+        else
+        {
+            x_inc = -1;
+            n += x - int(floor(x1));
+            error = (x0 - floor(x0)) * dy;
+        }
+
+        if (dy == 0)
+        {
+            y_inc = 0;
+            error -= std::numeric_limits<float>::infinity();
+        }
+        else if (y1 > y0)
+        {
+            y_inc = 1;
+            n += int(floor(y1)) - y;
+            error -= (floor(y0) + 1 - y0) * dx;
+        }
+        else
+        {
+            y_inc = -1;
+            n += y - int(floor(y1));
+            error -= (y0 - floor(y0)) * dx;
+        }
+    }
+
+    void move()
+    {
+        if (error > 0)
+        {
+            y += y_inc;
+            error -= dx;
+        }
+        else
+        {
+            x += x_inc;
+            error += dy;
+        }
+    }
+};
 
 int main( int argc, char * argv[] )
 {
@@ -171,7 +242,7 @@ int main( int argc, char * argv[] )
     KDTree2 kdtree( sites );
 
     // output image
-    Image out( image.width(), image.height() );
+    Image tmp( image.width(), image.height() );
 
     // compute sites colors
     std::vector<Color> colors( sites.size() );
@@ -191,7 +262,7 @@ int main( int argc, char * argv[] )
         }
 
         // maj image
-        out(i,j).r = id;
+        tmp(i,j).r = id;
     }
 
     // compute new image
@@ -199,10 +270,12 @@ int main( int argc, char * argv[] )
     for( int i = 0; i < image.width(); i++ )
     for( int j = 0; j < image.height(); j++ )
     {
-        int id = out(i,j).r;
+        int id = tmp(i,j).r;
         if( colors[id].a > 0 )
-            out(i,j) = colors[id] / colors[id].a;
+            tmp(i,j) = colors[id] / colors[id].a;
     }
+
+    Image out = tmp;
 
     // construct geometric voronoi diagram
     cinekine::voronoi::Sites vsites;
@@ -210,14 +283,66 @@ int main( int argc, char * argv[] )
         vsites.push_back(cinekine::voronoi::Vertex(sites[i][0], sites[i][1]));
     cinekine::voronoi::Graph graph = cinekine::voronoi::build(std::move(vsites), image.width(), image.height());
     
-    // draw edges
-    for (auto& cell: graph.cells()) 
-    for (auto& halfedge : cell.halfEdges) 
-    {
-        auto& edge = graph.edges()[halfedge.edge];
+    // optimisation process
+    // cf:  Approximating Functions on a Mesh with Restricted Voronoï Diagrams
+    //      Nivoliers V, Lévy B
+    //
+    // optimisation process
+    // foreach cell compute the gradient of the objective function over edges
+    std::vector<float> gradients(graph.sites().size(), 0);
+    for(const auto& cell: graph.cells())
+    {   
+        int site = cell.site;
+        for(const auto& halfedge: cell.halfEdges)
+        {
+            // get edge
+            const auto& edge = graph.edges()[halfedge.edge];
+            
+            // integrate gradients over edge
+            Traverse tr(edge.p0.x, edge.p0.y, edge.p1.x, edge.p1.y);
+            for( int n = tr.n; n > 0; --n )
+            {
+                int current = cell.site;
+                int neighbor = halfedge.site;
 
-        WuLine(out, edge.p0.x, edge.p0.y, edge.p1.x, edge.p1.y, Black());
+                Color& color_pixel = image(tr.x, tr.y);  
+                Color& color_current = colors[current];  
+                Color& color_neighbor = colors[neighbor];  
+
+                // color gradient
+                float g_current = ((color_pixel - color_current) * (color_pixel - color_current)).sum() 
+                float g_neighbor = ((color_pixel - color_neighbor) * (color_pixel - color_neighbor)).sum() 
+                
+                // angular speed term
+                float tdx = -tr.dy;    
+                float tdy = tr.dx;
+                float norm = std::sqrt(tdx*tdx + tdy*tdy);
+                float nx /= norm;
+                float ny /= norm;
+                
+                float x = tr.x;
+                float y = tr.y;
+
+                float x_current = graph.sites()[current].x;
+                float y_current = graph.sites()[current].y;
+
+                float x_neighbor = graph.sites()[neighbor].x;
+                float y_neighbor = graph.sites()[neighbor].y;
+
+                float dot_prod = n.x * a.x + n.y * a.y;
+
+                gradients[cell.site] = (g_current - g_neighbor);
+
+                tr.move();
+            }
+        }
     }
+
+    
+
+    // draw graph
+    // for (auto& edge: graph.edges()) 
+    //     WuLine(tmp, out, edge.p0.x, edge.p0.y, edge.p1.x, edge.p1.y, Color(0.75,0.75,0.75));
 
     write_image(out, argv[3]);
 
