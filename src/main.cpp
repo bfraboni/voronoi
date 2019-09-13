@@ -132,6 +132,8 @@ int main( int argc, char * argv[] )
                 gradients[cell.site] = gradients[cell.site] + vg * (g_current - g_neighbor);
             }
         }
+        // normalize gradient
+        gradients[cell.site] = normalize(gradients[cell.site]);
     }
 
     Image grad(image.width(), image.height());
@@ -143,8 +145,8 @@ int main( int argc, char * argv[] )
         Point2 pixel = {(float)i, (float)j};
         int id = kdtree.nearest( pixel );
         assert(id >= 0);
-        grad(i,j).r = gradients[id].x;
-        grad(i,j).g = gradients[id].y;
+        grad(i,j).r = (gradients[id].x + 1.f) * 0.5f;
+        grad(i,j).g = (gradients[id].y + 1.f) * 0.5f;
     }
 
     // draw graph
