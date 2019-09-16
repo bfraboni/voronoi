@@ -149,9 +149,24 @@ inline vec2 operator-(const vec2& a, const vec2& b)
     return vec2(a.x - b.x, a.y - b.y);
 }
 
+inline vec2 operator-(const vec2& a) 
+{
+    return vec2(-a.x, -a.y);
+}
+
 inline vec2 operator+(const vec2& a, const vec2& b) 
 {
     return vec2(a.x + b.x, a.y + b.y);
+}
+
+inline vec2 operator+(const float v, const vec2& b) 
+{
+    return vec2(v + b.x, v + b.y);
+}
+
+inline vec2 operator+(const vec2& b, const float v) 
+{
+    return vec2(v + b.x, v + b.y);
 }
 
 inline vec2 operator/(const vec2& a, float v)
@@ -160,6 +175,11 @@ inline vec2 operator/(const vec2& a, float v)
 }
 
 inline vec2 operator*(const vec2& a, float v) 
+{
+    return vec2(a.x * v, a.y * v);
+}
+
+inline vec2 operator*(float v, const vec2& a) 
 {
     return vec2(a.x * v, a.y * v);
 }
