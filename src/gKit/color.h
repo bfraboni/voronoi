@@ -22,6 +22,8 @@ struct Color
     
     float power( ) const;
     float sum( ) const;
+    float length( ) const;
+    float length2( ) const;
 
     //! renvoie la ieme composante de la couleur.
     float operator() ( const unsigned int i ) const { return (&r)[i]; }

@@ -187,7 +187,7 @@ inline vec2 operator*(float v, const vec2& a)
 inline vec2 normalize(const vec2& n) 
 {
     float v = std::sqrt(dot(n,n));
-    return v > 0 ? n / v : vec2(0,0);
+    return v > 0 ? n / v : n;
 }
 
 

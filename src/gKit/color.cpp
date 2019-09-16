@@ -1,5 +1,6 @@
 
 #include "color.h"
+#include <cmath>
 
 float Color::power( ) const
 {
@@ -9,6 +10,16 @@ float Color::power( ) const
 float Color::sum( ) const
 {
     return r+g+b;
+}
+
+float Color::length( ) const
+{
+    return std::sqrt(this->length2());
+}
+
+float Color::length2( ) const
+{
+    return r * r + g * g + b * b;
 }
 
 Color Black( )
@@ -40,7 +51,6 @@ Color Yellow( )
 {
     return Color(1, 1, 0);
 }
-
 
 Color operator+ ( const Color& a, const Color& b )
 {
