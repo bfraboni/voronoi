@@ -14,6 +14,9 @@
 #include "line.h"
 
 #include "voronoi.hpp"
+#include "legendre.hpp"
+
+typedef Rosetta::GaussLegendreQuadrature<vec2, 2> Legendre;
 
 typedef kdtree::Point<2> Point2;
 typedef kdtree::KDTree<2> KDTree2;
@@ -146,6 +149,8 @@ int main( int argc, char * argv[] )
             vsites[i] = cinekine::voronoi::Vertex(sites[i].x, sites[i].y);
         cinekine::voronoi::Graph graph = cinekine::voronoi::build(std::move(vsites), w, h);
 
+        
+        Legendre legendre;
         // foreach cell of the voronoi diagram compute the gradient of the objective function over edges
         std::vector<vec2> gradients(size, vec2(0,0));
         #pragma omp for
@@ -177,12 +182,9 @@ int main( int argc, char * argv[] )
                     if( p.x < 0 || p.x >= w || p.y < 0 || p.y >= h ) continue;
                     vec2 q(edge.p1.x, edge.p1.y);
                     if( q.x < 0 || q.x >= w || q.y < 0 || q.y >= h ) continue;
-                    vec2 m = (p + q) * 0.5f;
-                    if( m.x < 0 || m.x >= w || m.y < 0 || m.y >= h ) continue;
 
-                    vec2 d = (q - p) / 6.f;
-
-                    {
+                    auto objective = [ps, pn, n, site_id, neighbor_id, &image, &colors]( vec2 p ) -> vec2 
+                    { 
                         // image gradient term
                         Color& color_pixel = image(p.x, p.y);  
                         
@@ -198,29 +200,50 @@ int main( int argc, char * argv[] )
                         float dot_prod = dot(n, (pn - p));
                         vec2 vs = dot_prod > 0 ? (ps - p) * g / dot_prod : vec2(0,0);
 
-                        // integrate value
-                        gradients[cell.site] = gradients[cell.site] + vs;
-                    }
+                        return vs;
+                    };
 
-                    {
-                        // image gradient term
-                        Color& color_pixel = image(q.x, q.y);  
+                    gradients[cell.site] = gradients[cell.site] + legendre.integrate<>(p, q, objective);
+                    
+                    // {
+                    //     // image gradient term
+                    //     Color& color_pixel = image(p.x, p.y);  
                         
-                        Color& color_current = colors[site_id];  
-                        float g_current = (color_pixel - color_current).length2();
+                    //     Color& color_current = colors[site_id];  
+                    //     float g_current = (color_pixel - color_current).length2();
 
-                        Color& color_neighbor = colors[neighbor_id]; 
-                        float g_neighbor = (color_pixel - color_neighbor).length2();
+                    //     Color& color_neighbor = colors[neighbor_id]; 
+                    //     float g_neighbor = (color_pixel - color_neighbor).length2();
 
-                        float g = g_current - g_neighbor;
+                    //     float g = g_current - g_neighbor;
 
-                        // speed vector term
-                        float dot_prod = dot(n, (pn - q));
-                        vec2 vs = dot_prod > 0 ? (ps - q) * g / dot_prod : vec2(0,0);
+                    //     // speed vector term
+                    //     float dot_prod = dot(n, (pn - p));
+                    //     vec2 vs = dot_prod > 0 ? (ps - p) * g / dot_prod : vec2(0,0);
 
-                        // integrate value
-                        gradients[cell.site] = gradients[cell.site] + vs;
-                    }
+                    //     // integrate value
+                    //     gradients[cell.site] = gradients[cell.site] + legendre;
+                    // }
+
+                    // {
+                    //     // image gradient term
+                    //     Color& color_pixel = image(q.x, q.y);  
+                        
+                    //     Color& color_current = colors[site_id];  
+                    //     float g_current = (color_pixel - color_current).length2();
+
+                    //     Color& color_neighbor = colors[neighbor_id]; 
+                    //     float g_neighbor = (color_pixel - color_neighbor).length2();
+
+                    //     float g = g_current - g_neighbor;
+
+                    //     // speed vector term
+                    //     float dot_prod = dot(n, (pn - q));
+                    //     vec2 vs = dot_prod > 0 ? (ps - q) * g / dot_prod : vec2(0,0);
+
+                    //     // integrate value
+                    //     gradients[cell.site] = gradients[cell.site] + vs;
+                    // }
                 }
                 
                 // integrate gradients over edge
