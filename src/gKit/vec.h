@@ -139,66 +139,18 @@ struct vec2
     float x, y;
 };
 
-inline float dot(const vec2& a, const vec2& b) 
-{
-    return a.x * b.x + a.y * b.y;
-}
-
-inline vec2 operator-(const vec2& a, const vec2& b) 
-{
-    return vec2(a.x - b.x, a.y - b.y);
-}
-
-inline vec2 operator-(const vec2& a) 
-{
-    return vec2(-a.x, -a.y);
-}
-
-inline vec2 operator+(const vec2& a, const vec2& b) 
-{
-    return vec2(a.x + b.x, a.y + b.y);
-}
-
-inline vec2 operator+(const float v, const vec2& b) 
-{
-    return vec2(v + b.x, v + b.y);
-}
-
-inline vec2 operator+(const vec2& b, const float v) 
-{
-    return vec2(v + b.x, v + b.y);
-}
-
-inline vec2 operator/(const vec2& a, float v)
-{
-    return v != 0 ? vec2(a.x / v, a.y / v) : vec2(0,0);
-}
-
-inline vec2 operator*(const vec2& a, float v) 
-{
-    return vec2(a.x * v, a.y * v);
-}
-
-inline vec2 operator*(float v, const vec2& a) 
-{
-    return vec2(a.x * v, a.y * v);
-}
-
-inline float length2( const vec2& v )
-{
-    return v.x * v.x + v.y * v.y;
-}
-
-inline float length( const vec2& v )
-{
-    return std::sqrt(length2(v));
-}
-
-inline vec2 normalize(const vec2& n) 
-{
-    float v = std::sqrt(dot(n,n));
-    return v > 0 ? n / v : n;
-}
+float dot(const vec2& a, const vec2& b) ;
+vec2 operator-(const vec2& a, const vec2& b) ;
+vec2 operator-(const vec2& a) ;
+vec2 operator+(const vec2& a, const vec2& b) ;
+vec2 operator+(const float v, const vec2& b) ;
+vec2 operator+(const vec2& b, const float v) ;
+vec2 operator/(const vec2& a, float v);
+vec2 operator*(const vec2& a, float v) ;
+vec2 operator*(float v, const vec2& a) ;
+float length2( const vec2& v );
+float length( const vec2& v );
+vec2 normalize(const vec2& n) ;
 
 //! vecteur generique, utilitaire.
 struct vec3

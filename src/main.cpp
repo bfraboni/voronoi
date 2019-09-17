@@ -109,14 +109,18 @@ int main( int argc, char * argv[] )
     // image voronoisation
     // cf:  Approximating Functions on a Mesh with Restricted Voronoï Diagrams
     //      Nivoliers V, Lévy B
-    const int max_iter = 200;
+    const int max_iter = 250;
     for(int iter = 0; iter < max_iter; ++iter)
     {
-        // copy sites for nearest neighbour search
+        // copy sites for nearest neighbour search and voronoi construction
         std::vector<Point2> ksites( size );
+        cinekine::voronoi::Sites vsites( size );
         #pragma omp for 
-        for(int i = 0; i < size; ++i)
+        for(int i = 0; i < size; ++i) 
+        {
             ksites[i] = {sites[i].x, sites[i].y};
+            vsites[i] = cinekine::voronoi::Vertex(sites[i].x, sites[i].y);
+        }
         
         // build kdtree for nearest neighbour search
         KDTree2 kdtree( ksites );
@@ -143,10 +147,6 @@ int main( int argc, char * argv[] )
             colors[i] = colors[i].a > 0 ? colors[i] / colors[i].a : Black();
 
         // construct geometric voronoi diagram
-        cinekine::voronoi::Sites vsites( size );
-        #pragma omp for
-        for(int i = 0; i < size; ++i) 
-            vsites[i] = cinekine::voronoi::Vertex(sites[i].x, sites[i].y);
         cinekine::voronoi::Graph graph = cinekine::voronoi::build(std::move(vsites), w, h);
 
         // foreach cell of the voronoi diagram compute the gradient of the objective function over edges
@@ -168,52 +168,52 @@ int main( int argc, char * argv[] )
                 const auto& edge = graph.edges()[edge_id];
                 const int neighbor_id = edge.leftSite == site_id ? edge.rightSite : edge.leftSite;
                 if( neighbor_id < 0 ) continue; // no neighbor
-                const auto& neighbor = graph.sites()[neighbor_id];
+
+                // get segment info
+                float dx = std::abs(edge.p1.x - edge.p0.x), dy = std::abs(edge.p1.y - edge.p0.y);
+                vec2 n = normalize(vec2(-dy, dx));
+                const vec2& pl = sites[site_id];
+                const vec2& pk = sites[neighbor_id];
+
+                vec2 p0(edge.p0.x, edge.p0.y);
+                if( p0.x < 0 || p0.x >= w || p0.y < 0 || p0.y >= h ) continue;
+                vec2 p1(edge.p1.x, edge.p1.y);
+                if( p1.x < 0 || p1.x >= w || p1.y < 0 || p1.y >= h ) continue;
+
+                // if normal is ill-oriented
+                if( dot(n, (pk - p0)) < 0 ) n = -n;
+
+                // lambda function for edge integration 
+                auto objective = [&pl, &pk, &n, &w, &h, site_id, neighbor_id, &image, &colors]( const vec2& p ) -> vec2 
+                { 
+                    int x = p.x, y = p.y;
+                    if( x < 0 || x >= w || y < 0 || y >= h ) return vec2(0, 0);
+
+                    // image gradient term
+                    Color& color_pixel = image(x, y);  
+                    
+                    Color& color_current = colors[site_id];  
+                    float gl = (color_pixel - color_current).length2();
+
+                    Color& color_neighbor = colors[neighbor_id]; 
+                    float gk = (color_pixel - color_neighbor).length2();
+
+                    float g = gl - gk;
+
+                    // speed vector term times gradient term
+                    return g * (pl - p) / dot(n, (pl - pk));
+                };
 
                 // integral of F(x) over the edge segment using quadrature
-                {   
-                    // get segment info
-                    float dx = std::fabs(edge.p1.x - edge.p0.x), dy = std::fabs(edge.p1.y - edge.p0.y);
-                    vec2 n = normalize(vec2(-dy, dx));
-                    const vec2& pl = sites[site_id];
-                    const vec2& pk = sites[neighbor_id];
-
-                    vec2 p0(edge.p0.x, edge.p0.y);
-                    // if( p0.x < 0 || p0.x >= w || p0.y < 0 || p0.y >= h ) continue;
-                    vec2 p1(edge.p1.x, edge.p1.y);
-                    // if( p1.x < 0 || p1.x >= w || p1.y < 0 || p1.y >= h ) continue;
-
-                    // if normal is ill-oriented return backward
-                    if( dot(n, (pk - p0)) < 0 ) n = -n;
-
-                    // lambda function for edge integration 
-                    auto objective = [pl, pk, n, site_id, neighbor_id, &image, &colors]( vec2 p ) -> vec2 
-                    { 
-                        // image gradient term
-                        Color& color_pixel = image(p.x, p.y);  
-                        
-                        Color& color_current = colors[site_id];  
-                        float gl = (color_pixel - color_current).length2();
-
-                        Color& color_neighbor = colors[neighbor_id]; 
-                        float gk = (color_pixel - color_neighbor).length2();
-
-                        float g = gl - gk;
-
-                        // speed vector term times gradient term
-                        return g * (pl - p) / dot(n, (pl - pk));
-                    };
-
-                    gradients[cell.site] = gradients[cell.site] + legendre.integrate<>(p0, p1, objective);
-                }
+                gradients[cell.site] = gradients[cell.site] + legendre.integrate<>(p0, p1, objective);
             }
             // normalize gradient
             gradients[cell.site] = normalize(gradients[cell.site]);
         }
 
         // move sites in the gradient direction
+        const float delta0 = 0.02f * std::sqrt((float)(w * w + h * h));
         const float exp = iter / (max_iter - iter); 
-        const float delta0 = 0.02f * std::sqrt((float)w * (float)w + (float)h * (float)h);
         const float sigma = 0.5f; 
         const float delta = delta0 * std::pow(sigma, exp); 
 
@@ -222,9 +222,9 @@ int main( int argc, char * argv[] )
             sites[i] = sites[i] + delta * gradients[i];
 
         {
-            // std::stringstream ss;
-            // ss << iter << "-" << argv[3];
-            // write_image(reconstruct(image, sites), ss.str().c_str());
+            std::stringstream ss;
+            ss << iter << "-" << argv[3];
+            write_image(reconstruct(image, sites), ss.str().c_str());
         }
 
         printf("iteration %d\n", iter);
