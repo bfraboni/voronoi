@@ -10,7 +10,6 @@ Point Origin( )
     return Point(0, 0, 0);
 }
 
-
 float distance( const Point& a, const Point& b )
 {
     return length(a - b);
@@ -25,7 +24,6 @@ Point center( const Point& a, const Point& b )
 {
     return Point((a.x + b.x) / 2, (a.y + b.y) / 2, (a.z + b.z) / 2);
 }
-
 
 Point min( const Point& a, const Point& b )
 { 

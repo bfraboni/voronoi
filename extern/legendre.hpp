@@ -26,12 +26,13 @@ namespace Rosetta
             T q = (b + a) / 2;
             const LegendrePolynomial& legpoly = s_LegendrePolynomial;
  
-            T sum = 0;
-            for (int i = 1; i <= eDEGREE; ++i) {
+            T sum = vec2(0,0);
+            for (int i = 1; i <= eDEGREE; ++i) 
+            {
                 sum = sum + legpoly.weight(i) * f(p * legpoly.root(i) + q);
             }
  
-            return p * sum;
+            return length(p) * 0.5f * sum;
         }
  
         /*! Print out roots and weights for information

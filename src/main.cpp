@@ -12,11 +12,11 @@
 
 #include "kdtree.h"
 #include "line.h"
-
 #include "voronoi.hpp"
+
 #include "legendre.hpp"
 
-typedef Rosetta::GaussLegendreQuadrature<vec2, 2> Legendre;
+typedef Rosetta::GaussLegendreQuadrature<vec2, 3> Legendre;
 
 typedef kdtree::Point<2> Point2;
 typedef kdtree::KDTree<2> KDTree2;
@@ -180,8 +180,27 @@ int main( int argc, char * argv[] )
 
                     vec2 p(edge.p0.x, edge.p0.y);
                     if( p.x < 0 || p.x >= w || p.y < 0 || p.y >= h ) continue;
+                    
                     vec2 q(edge.p1.x, edge.p1.y);
                     if( q.x < 0 || q.x >= w || q.y < 0 || q.y >= h ) continue;
+
+                    auto project = [&dy, &dx](const vec2& p0, const vec2& p1, const vec2& p) -> vec2
+                    {
+                        float m = dy / dy;
+                        float b = p0.y - (m * p0.x);
+
+                        float x = (m * p.y + p.x - m * b) / (m * m + 1);
+                        float y = (m * m * p.y + m * p.x + b) / (m * m + 1);
+
+                        return vec2(x, y);
+                    };
+                    
+                    vec2 proj = project(vec2(edge.p0.x, edge.p0.y), vec2(edge.p1.x, edge.p1.y), ps);
+                    vec2 n2 = ps - proj;
+                    if( dot(n, n2) > 0 ) 
+                    {
+                        n = -n;
+                    }
 
                     auto objective = [ps, pn, n, site_id, neighbor_id, &image, &colors]( vec2 p ) -> vec2 
                     { 
@@ -289,7 +308,6 @@ int main( int argc, char * argv[] )
 
         // move sites in the gradient direction
         const float exp = iter / (max_iter - iter); 
-        // const float exp = iter - 1; 
         const float delta0 = 0.02f * std::sqrt((float)w * (float)w + (float)h * (float)h);
         const float sigma = 0.5f; 
         const float delta = delta0 * std::pow(sigma, exp); 
@@ -298,11 +316,10 @@ int main( int argc, char * argv[] )
         for(int i = 0; i < size; ++i)
             sites[i] = sites[i] + delta * gradients[i];
 
-        // if(iter%5==0)
         {
-            // std::stringstream ss;
-            // ss << iter << "-" << argv[3];
-            // write_image(reconstruct(image, sites), ss.str().c_str());
+            std::stringstream ss;
+            ss << iter << "-" << argv[3];
+            write_image(reconstruct(image, sites), ss.str().c_str());
         }
 
         printf("iteration %d\n", iter);

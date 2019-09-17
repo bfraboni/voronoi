@@ -184,12 +184,21 @@ inline vec2 operator*(float v, const vec2& a)
     return vec2(a.x * v, a.y * v);
 }
 
+inline float length2( const vec2& v )
+{
+    return v.x * v.x + v.y * v.y;
+}
+
+inline float length( const vec2& v )
+{
+    return std::sqrt(length2(v));
+}
+
 inline vec2 normalize(const vec2& n) 
 {
     float v = std::sqrt(dot(n,n));
     return v > 0 ? n / v : n;
 }
-
 
 //! vecteur generique, utilitaire.
 struct vec3
