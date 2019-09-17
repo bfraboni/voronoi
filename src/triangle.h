@@ -47,5 +47,10 @@ struct Triangle
         float w = 1.f - u - v;
         return vec2(a * w + b * u + c * v);
     }
+
+    vec2 point( const vec2& uv ) const
+    {
+        return point(uv.x, uv.y);
+    }
 };
 #endif
