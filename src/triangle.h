@@ -13,7 +13,7 @@ struct Dunavant
     Dunavant( int degree = 2 ) : degree(degree)
     {
         order = dunavant_order_num( degree );
-        printf("order %d\n", order);
+        // printf("order %d\n", order);
         points = new double[2*order];
         weights = new double[order];
         dunavant_rule ( degree, order, points, weights );

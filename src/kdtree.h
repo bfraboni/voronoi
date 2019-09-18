@@ -13,8 +13,9 @@ namespace kdtree
     {   
         Point<N> p;
         T v;
+        int id;
         KDData() = default;
-        KDData( const Point<N>& p, const T& v ) : p(p), v(v) {}
+        KDData( const Point<N>& p, const T& v, int id ) : p(p), v(v), id(id) {}
     };
 
     template<typename T, int N>        
@@ -41,7 +42,7 @@ namespace kdtree
         {
             #pragma omp for 
             for(int i = 0; i < (int)data.size(); ++i)
-                data[i] = KDData<T, N>( points[i], values[i] );
+                data[i] = KDData<T, N>( points[i], values[i], i );
 
             build(0, data.size(), 0);
         }
@@ -83,6 +84,22 @@ namespace kdtree
             int best = 0;
             nearest( query, (int) nodes.size() - 1, 0, dmin, best );
             return nodes[best].data.v;
+        }
+
+        const point_type& nearest_point( const point_type& query )
+        {
+            float dmin = std::numeric_limits<float>::max();
+            int best = 0;
+            nearest( query, (int) nodes.size() - 1, 0, dmin, best );
+            return nodes[best].data.p;
+        }
+
+        const int& nearest_index( const point_type& query )
+        {
+            float dmin = std::numeric_limits<float>::max();
+            int best = 0;
+            nearest( query, (int) nodes.size() - 1, 0, dmin, best );
+            return nodes[best].data.id;
         }
 
         int nearest( const point_type& query )

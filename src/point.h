@@ -90,6 +90,22 @@ namespace kdtree
         return res;
     }
 
+    template <int N>
+    Point<N> lerp(const Point<N>& a, const Point<N>& b, const float t) 
+    {
+        Point<N> res;
+        for(int i = 0; i < N; ++i)
+        {
+            if( t == 1 )
+                res[i] = b[i];
+            else if( t == 0 )
+                res[i] = a[i];
+            else
+                res[i] = a[i] + t * (b[i] - a[i]);
+        }
+        return res;
+    }
+
     // P > 2 : Minkowski distance
     template<int N, int P>
     struct distance
