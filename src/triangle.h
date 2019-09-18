@@ -13,18 +13,13 @@ struct Dunavant
     Dunavant( int degree = 2 ) : degree(degree)
     {
         order = dunavant_order_num( degree );
+        printf("order %d\n", order);
         points = new double[2*order];
         weights = new double[order];
         dunavant_rule ( degree, order, points, weights );
-
-        for ( int i = 0; i < order_num; i++ )
-        {
-            printf("p%d %f %f %f\n", i, points[2*i], points[2*i+1], weights[i] );
-        }
     }
 
-    const int size() const {return order;}
-
+    int size() const {return order;}
     vec2 point(int i) const {return vec2(points[2*i],points[2*i+1]);}
     float weight(int i) const {return weights[i];}
 };
