@@ -169,39 +169,6 @@ Image draw_graph( const Image& image, const std::vector<vec2>& sites )
     return gimage;
 }
 
-Image draw_cells( const Image& image, const std::vector<vec2>& sites )
-{
-    const int w = image.width();
-    const int h = image.height();
-
-    auto graph = build_graph( sites, w, h );
-    std::vector<Color> colors = evaluate_colors( graph, image );
-
-    Image output(w, h);
-    #pragma omp for
-    for( int i = 0; i < w; ++i )
-    for( int j = 0; j < h; ++j )
-    {   
-        vec2 pixel(i, j);
-        int best = -1;
-        float dmin = std::numeric_limits<float>::max();
-
-        // exhaustive search
-        for( int k = 0; k < (int)graph.sites().size(); ++k)
-        {   
-            vec2 site(graph.sites()[k].x, graph.sites()[k].y);
-            float d = length(site - pixel);
-            if( d <= dmin )
-            {
-                dmin = d;
-                best = k;
-            }
-        }
-        output(i, j) = colors[best];
-    }
-    return output;
-}
-
 Image draw_cells_kd( const Image& image, const std::vector<vec2>& sites )
 {
     typedef kdtree::Point<2> Point2;
