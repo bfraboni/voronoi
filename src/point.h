@@ -31,6 +31,14 @@ namespace kdtree
             out << ")\n";
             return out;
         }
+
+        static Point<N> zero()
+        {
+            Point<N> pt;
+            for(int i = 0; i < N; ++i)
+                pt[i] = 0;
+            return pt;
+        }
     };
 
     template <int N>
@@ -73,12 +81,36 @@ namespace kdtree
     }
 
     template <int N>
+    Point<N> operator/(const Point<N>& a, const float v) 
+    {
+        Point<N> pt;
+        for(int i = 0; i < N; ++i)
+            pt[i] = a[i] / v;
+        return pt;
+    }
+
+    template <int N>
     Point<N> operator*(const Point<N>& a, const Point<N>& b) 
     {
         Point<N> pt;
         for(int i = 0; i < N; ++i)
-                pt[i] = a[i] * b[i];
+            pt[i] = a[i] * b[i];
         return pt;
+    }
+
+    template <int N>
+    Point<N> operator*(const Point<N>& a, const float v) 
+    {
+        Point<N> pt;
+        for(int i = 0; i < N; ++i)
+            pt[i] = a[i] * v;
+        return pt;
+    }
+
+    template <int N>
+    Point<N> operator*(const float v, const Point<N>& a) 
+    {
+        return a * v;
     }
 
     template <int N>
@@ -86,8 +118,27 @@ namespace kdtree
     {
         float res = 0;
         for(int i = 0; i < N; ++i)
-                res += a[i] * b[i];
+            res += a[i] * b[i];
         return res;
+    }
+
+    template <int N>
+    float length2(const Point<N>& a) 
+    {
+        return dot(a, a);
+    }
+
+    template <int N>
+    float length(const Point<N>& a) 
+    {
+        return std::sqrt(length2(a));
+    }
+
+    template <int N>
+    Point<N> normalize(const Point<N>& a) 
+    {
+        float l = length(a);
+        return a / l;
     }
 
     template <int N>

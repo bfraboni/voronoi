@@ -8,6 +8,7 @@
 #include <functional>
 
 #include "voronoization.h"
+#include "transport.h"
 
 int main( int argc, char * argv[] )
 {
@@ -50,75 +51,53 @@ int main( int argc, char * argv[] )
         const int curr = i;
         const int next = i+1;
 
-        typedef kdtree::Point<2> Point2;
-        typedef kdtree::KDTree<Color, 2> KDTree2Color;
+        typedef kdtree::Point<5> Point5;
 
-        std::vector<Point2> points_curr( size );
-        const Voronoization& v_curr = voronois[curr];
-        cinekine::voronoi::Graph graph_curr = build_graph( v_curr.sites, v_curr.w, v_curr.h );
-        std::vector<Color> colors_curr = evaluate_colors( graph_curr, v_curr.image );
+        std::vector<Point5> points_curr( size );
+        std::vector<Point5> points_next( size );
 
-        #pragma omp for
-        for (int j = 0; j < size; ++j)
-            points_curr[j] = { v_curr.sites[j].x, v_curr.sites[j].y };
+        const Voronoization&        v_curr = voronois[curr];
+        const Voronoization&        v_next = voronois[next];
 
-        KDTree2Color kdtree( points_curr, colors_curr );
-
-        std::vector<Point2> points_next( size );
-        const Voronoization& v_next = voronois[next];
-        cinekine::voronoi::Graph graph_next = build_graph( v_next.sites, v_next.w, v_next.h );
-        std::vector<Color> colors_next = evaluate_colors( graph_next, v_next.image );
+        cinekine::voronoi::Graph    graph_curr = build_graph( v_curr.sites, v_curr.w, v_curr.h );
+        cinekine::voronoi::Graph    graph_next = build_graph( v_next.sites, v_next.w, v_next.h );
+        
+        std::vector<Color>          colors_curr = evaluate_colors( graph_curr, v_curr.image );
+        std::vector<Color>          colors_next = evaluate_colors( graph_next, v_next.image );
 
         #pragma omp for
         for (int j = 0; j < size; ++j)
-            points_next[j] = { v_next.sites[j].x, v_next.sites[j].y };
+        {   
+            Color color_curr = colors_curr[j];
+            Color color_next = colors_next[j];
 
-        std::vector<int> nearests( size );
-        std::vector<Point2> npoints( size );
-        std::vector<Color> ncolors( size );
-        #pragma omp for
-        for (int j = 0; j < size; ++j)
-        {
-            const Point2& query = points_next[j];
-            int best = kdtree.nearest( query );
-            nearests[j] = kdtree.nodes[best].data.id;
-            npoints[j] = kdtree.nodes[best].data.p;
-            ncolors[j] = kdtree.nodes[best].data.v;
+            points_curr[j] = { v_curr.sites[j].x / v_curr.w, v_curr.sites[j].y / v_curr.h, color_curr.r, color_curr.g, color_curr.b };
+            points_next[j] = { v_next.sites[j].x / v_next.w, v_next.sites[j].y / v_next.h, color_next.r, color_next.g, color_next.b };
         }
 
-        int nb_frames = 20;
-        float step = 1.f / (frame - 1.f);
-        for(int j = 0; j < nb_frames; ++j)
-        {
-            float t = j * step;
+        int nb_frames = 10000, w = v_curr.w, h = v_curr.h;
+        Transport<Point5> transport(points_curr, points_next, nb_frames);
 
+        auto draw = [size, w, h, &frame]( const std::vector<Point5>& points ) -> void 
+        {
             std::vector<vec2> sites( size );
             std::vector<Color> colors( size );
             #pragma omp for
             for (int k = 0; k < size; ++k)
             {
-                Point2 p = lerp(npoints[k], points_next[k], t); 
-                sites[k] = vec2(p[0], p[1]); 
-                
-                Color a = rgb2hsv(ncolors[k]);
-                Color b = rgb2hsv(colors_next[k]);
-                Color c = hsv2rgb(a + t * (b - a));
-
-                if( t == 1 )
-                    colors[k] = colors_next[k]; 
-                else if( t == 0 )
-                    colors[k] = ncolors[k]; 
-                else
-                    colors[k] = c; 
+                sites[k] = vec2(points[k][0] * w, points[k][1] * h); 
+                colors[k] = Color( points[k][2], points[k][3], points[k][4] ); 
             }
 
-            Image voronoi = draw_cells_kd( sites, colors, v_curr.w, v_curr.h );
+            Image voronoi = draw_cells_kd( sites, colors, w, h );
             std::stringstream ss;
             ss << "smooth-" << std::setfill('0') << std::setw(3) << frame << ".png";
             write_image(voronoi, ss.str().c_str());
-
             frame++;
-        }
+        };   
+
+        draw( points_curr );
+        transport.transport<>( draw );
     }
 
     return 0;
