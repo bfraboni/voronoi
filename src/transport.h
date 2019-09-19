@@ -44,28 +44,24 @@ struct Transport
         int iter = 0;
 
         std::vector<point_type> displacement( point_size, point_type::zero() ), old_displacement( point_size, point_type::zero() ); 
+        std::vector< std::pair<float, int> > projections1( point_size ), projections2( point_size ); 
         float gamma = 0.9;
 
         while( iter < max_iter )
         // while( !converged() )
         {
             std::vector<point_type> copy = input1;
+            #pragma omp for
             for( int j = 0; j < point_size; ++j ) 
                 copy[j] = copy[j] + gamma * old_displacement[j];
             
-            // std::vector<float> distance_to_target(point_size, 0);
-
-            // #pragma omp for
+            #pragma omp for
             for( int i = 0; i < m; ++i )
             {
                 // random ND slice
-                point_type d = random_direction();
-                d = normalize(d);
+                point_type d = normalize(random_direction());
 
                 // project points on the slice
-                std::vector< std::pair<float, int> > projections1( point_size ); 
-                std::vector< std::pair<float, int> > projections2( point_size ); 
-
                 for( int j = 0; j < point_size; ++j )
                 {
                     projections1[j] = std::make_pair( dot( copy[j], d ), j );
@@ -73,8 +69,9 @@ struct Transport
                 }
 
                 // sort projections
-                std::sort( projections1.begin(), projections1.end() );
-                std::sort( projections2.begin(), projections2.end() );
+                auto compare = [&](const std::pair<float, int>& a, const std::pair<float, int>& b) -> bool{return a.first < b.first;};
+                std::sort( projections1.begin(), projections1.end(), compare );
+                std::sort( projections2.begin(), projections2.end(), compare );
 
                 // aggregate displacement from p1 to p2
                 for( int j = 0; j < point_size; ++j ) 
@@ -100,16 +97,18 @@ struct Transport
             printf("iteration %d rmse %f\n", iter, sum);
 
             // move points of input1
+            #pragma omp for
             for( int j = 0; j < point_size; ++j ) 
             {   
-                input1[j] = input1[j] + (gamma * old_displacement[j] + displacement[j]);
+                input1[j] = input1[j] + float(iter) / float(max_iter - iter) * (gamma * old_displacement[j] + displacement[j]);
+
                 // force color clamping
                 for( int k = 2; k < input1[j].size(); ++k )
                     input1[j][k] = std::min(1.f, std::max(0.f, input1[j][k]));
             }
 
-            if( iter%100 == 0)
-                f( input1 );
+            // if( iter%100 == 0 )
+            f( input1 );
 
             std::swap(displacement, old_displacement);
             std::fill(displacement.begin(), displacement.end(), point_type::zero());

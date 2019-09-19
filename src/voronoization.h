@@ -393,4 +393,110 @@ Color hsv2rgb(const Color& in)
     return out;     
 }
 
+Color rgb2hsl(const Color& rgb) {
+    Color hsl;
+
+    float r = (rgb.r / 255.0f);
+    float g = (rgb.g / 255.0f);
+    float b = (rgb.b / 255.0f);
+
+    float min = std::min(std::min(r, g), b);
+    float max = std::max(std::max(r, g), b);
+    float delta = max - min;
+
+    hsl.b = (max + min) / 2;
+
+    if (delta == 0)
+    {
+        hsl.r = 0;
+        hsl.g = 0.0f;
+    }
+    else
+    {
+        hsl.g = (hsl.b <= 0.5) ? (delta / (max + min)) : (delta / (2 - max - min));
+
+        float hue;
+
+        if (r == max)
+        {
+            hue = ((g - b) / 6) / delta;
+        }
+        else if (g == max)
+        {
+            hue = (1.0f / 3) + ((b - r) / 6) / delta;
+        }
+        else
+        {
+            hue = (2.0f / 3) + ((r - g) / 6) / delta;
+        }
+
+        if (hue < 0)
+            hue += 1;
+        if (hue > 1)
+            hue -= 1;
+
+        hsl.r = static_cast<int>(hue * 360.f);
+    }
+
+    return hsl;
+}
+
+float hue2rgb(float v1, float v2, float vH) {
+    if (vH < 0)
+        vH += 1;
+
+    if (vH > 1)
+        vH -= 1;
+
+    if ((6 * vH) < 1)
+        return (v1 + (v2 - v1) * 6 * vH);
+
+    if ((2 * vH) < 1)
+        return v2;
+
+    if ((3 * vH) < 2)
+        return (v1 + (v2 - v1) * ((2.0f / 3) - vH) * 6);
+
+    return v1;
+}
+
+Color hsl2rgb(const Color& hsl) {
+    float r = 0;
+    float g = 0;
+    float b = 0;
+
+    if (hsl.g == 0)
+    {
+        r = g = b = (unsigned char)(hsl.b * 255);
+    }
+    else
+    {
+        float v1, v2;
+        float hue = (float)hsl.r / 360.f;
+
+        v2 = (hsl.b < 0.5) ? (hsl.b * (1 + hsl.g)) : ((hsl.b + hsl.g) - (hsl.b * hsl.g));
+        v1 = 2 * hsl.b - v2;
+
+        r = 255.f * hue2rgb(v1, v2, hue + (1.f / 3.f));
+        g = 255.f * hue2rgb(v1, v2, hue);
+        b = 255.f * hue2rgb(v1, v2, hue - (1.f / 3.f));
+    }
+
+    return Color(r, g, b);
+}
+
+Color rgb2yuv(const Color& rgb) {
+    double y = rgb.r * .299000 + rgb.g * .587000 + rgb.b * .114000;
+    double u = rgb.r * -.168736 + rgb.g * -.331264 + rgb.b * .500000 + 128;
+    double v = rgb.r * .500000 + rgb.g * -.418688 + rgb.b * -.081312 + 128;
+    return Color(y, u, v);
+}
+
+Color yuv2rgb(const Color& yuv) {
+    float r = yuv.r + 1.4075 * (yuv.b - 128);
+    float g = yuv.r - 0.3455 * (yuv.g - 128) - (0.7169 * (yuv.b - 128));
+    float b = yuv.r + 1.7790 * (yuv.g - 128);
+    return Color(r, g, b);
+}
+
 #endif

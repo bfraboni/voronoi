@@ -12,7 +12,7 @@
 
 int main( int argc, char * argv[] )
 {
-    if(argc != 6 )
+    if(argc < 6 )
         printf("usage : voronoi <sites> <iteration> <nb_input> <input>");
 
     // parameters
@@ -25,6 +25,8 @@ int main( int argc, char * argv[] )
     std::vector<Image> images(nb_images); 
     for( int i = 0; i < nb_images; ++i )
         images[i] = read_image(argv[i+4]);
+
+    std::string output_path = argc > 4+nb_images ? argv[4+nb_images] : "";
 
     // image voronoisation
     // cf:  Approximating Functions on a Mesh with Restricted Voronoï Diagrams, Nivoliers V, Lévy B, 2013
@@ -75,10 +77,10 @@ int main( int argc, char * argv[] )
             points_next[j] = { v_next.sites[j].x / v_next.w, v_next.sites[j].y / v_next.h, color_next.r, color_next.g, color_next.b };
         }
 
-        int nb_frames = 10000, w = v_curr.w, h = v_curr.h;
+        int nb_frames = 500, w = v_curr.w, h = v_curr.h;
         Transport<Point5> transport(points_curr, points_next, nb_frames);
 
-        auto draw = [size, w, h, &frame]( const std::vector<Point5>& points ) -> void 
+        auto draw = [output_path, size, w, h, &frame]( const std::vector<Point5>& points ) -> void 
         {
             std::vector<vec2> sites( size );
             std::vector<Color> colors( size );
@@ -91,13 +93,14 @@ int main( int argc, char * argv[] )
 
             Image voronoi = draw_cells_kd( sites, colors, w, h );
             std::stringstream ss;
-            ss << "smooth-" << std::setfill('0') << std::setw(3) << frame << ".png";
+            ss << output_path << "smooth-" << std::setfill('0') << std::setw(3) << frame << ".png";
             write_image(voronoi, ss.str().c_str());
             frame++;
         };   
 
         draw( points_curr );
         transport.transport<>( draw );
+        draw( points_next );
     }
 
     return 0;
