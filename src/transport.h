@@ -3,6 +3,7 @@
 
 #include <chrono>
 #include <random>
+#include <map>
 #include "point.h"
 
 template<typename point_type>
@@ -12,6 +13,7 @@ struct Transport
     // number of slices, pointset size
     int m = 64, point_size, max_iter; 
 
+    std::map<int, int> tmap;
     // random distribution of the sites
     std::mt19937 rng;
     std::normal_distribution<float> distribution;
@@ -120,6 +122,7 @@ struct Transport
 
         // construct transport map
         
+
     }
 };
 

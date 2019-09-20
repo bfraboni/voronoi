@@ -104,8 +104,8 @@ int main( int argc, char * argv[] )
             frame++;
         };   
 
-        draw( points_curr );
         transport.transport<>( draw );
+        draw( points_curr );
         draw( points_next );
     }
 
