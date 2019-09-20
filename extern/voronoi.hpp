@@ -832,9 +832,9 @@ namespace cinekine
         
     Fortune::~Fortune()
     {
-        printf("Arcs Remaining: %d\n", _arcCnt);
-        printf("Circles Remaining: %d\n", _circleCnt);
-        printf("Edges alloced: %lu\n", _edges.size());
+        // printf("Arcs Remaining: %d\n", _arcCnt);
+        // printf("Circles Remaining: %d\n", _circleCnt);
+        // printf("Edges alloced: %lu\n", _edges.size());
     }
 
     float Fortune::leftBreakPoint(BeachArc* arc, float directrix)

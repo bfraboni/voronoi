@@ -40,17 +40,16 @@ struct Transport
         return p;
     }
 
-    template<typename Function>
-    void transport( Function f )
+    void transport()
     {
         int iter = 0;
+        printf("max_iter %d\n", max_iter);
 
         std::vector<point_type> displacement( point_size, point_type::zero() ), old_displacement( point_size, point_type::zero() ); 
         std::vector< std::pair<float, int> > projections1( point_size ), projections2( point_size ); 
         float gamma = 0.9;
 
         while( iter < max_iter )
-        // while( !converged() )
         {
             std::vector<point_type> copy = input1;
             #pragma omp for
@@ -105,14 +104,11 @@ struct Transport
             {   
                 input1[j] = input1[j] +  nu * (gamma * old_displacement[j] + displacement[j]);
 
-                // force color clamping
+                // keep color in [0,1]
                 for( int k = 2; k < input1[j].size(); ++k )
                     input1[j][k] = std::min(1.f, std::max(0.f, input1[j][k]));
                 
             }
-
-            // if( iter%50 == 0 )
-                // f( input1 );
 
             std::swap(displacement, old_displacement);
             std::fill(displacement.begin(), displacement.end(), point_type::zero());
@@ -121,8 +117,28 @@ struct Transport
         }
 
         // construct transport map
-        
+        kdtree::KDTree<point_type, 5> kdtree(input1, input1);
+        for( int j = 0; j < point_size; ++j )
+        {
+            int best = kdtree.nearest(input2[j]);
+            int id = kdtree.nodes[best].data.id;
+            auto insert = tmap.insert( std::make_pair(id, j) );
+            if( !insert.second )
+            {
+                // printf("conflit\n");
+                int k = 2;
+                while( !insert.second )
+                {
+                    std::vector<int> knearest = kdtree.knearest(input2[j], k);
+                    int best = knearest[k-1];
+                    int id = kdtree.nodes[best].data.id;
+                    insert = tmap.insert( std::make_pair(id, j) );
+                    ++k;
+                }
+            }
+        }
 
+        printf("transport fini\n");
     }
 };
 

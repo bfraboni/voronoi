@@ -67,3 +67,12 @@ project("test-voronoi")
 	files { "src/gKit/*", "src/*.h", "src/test/voronoi.cpp" }
 
 
+
+project("test-random")
+	language "C++"
+	kind "ConsoleApp"
+	targetdir "bin"
+	includedirs { "src/", "extern/" }
+	files { "src/gKit/*", "src/*.h", "src/test/random.cpp" }
+
+

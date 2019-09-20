@@ -55,5 +55,7 @@ Color operator/ ( const Color& a, const Color& b );
 Color operator/ ( const float k, const Color& c );
 Color operator/ ( const Color& c, const float k );
 
+Color lerp(const Color& a, const Color& b, const float t) ;
+
 ///@}
 #endif

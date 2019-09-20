@@ -152,6 +152,14 @@ float dot(const vec2& a, const vec2& b)
     return a.x * b.x + a.y * b.y;
 }
 
+vec2 lerp(const vec2& a, const vec2& b, const float t) 
+{   
+    if( t == 0 ) return a;
+    if( t == 1 ) return b;
+
+    return vec2(a.x - t * (b.x - a.x), a.y - t * (b.y - a.y));
+}
+
 vec2 operator-(const vec2& a, const vec2& b) 
 {
     return vec2(a.x - b.x, a.y - b.y);

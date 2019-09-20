@@ -11,7 +11,7 @@ namespace kdtree
     struct Point
     {
         float data[N];
-        int size() const {return N;}
+        static int size() {return N;}
         
         float& operator[](int i) {return data[i];}
         float operator[](int i) const {return data[i];}

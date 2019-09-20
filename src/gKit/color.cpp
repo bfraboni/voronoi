@@ -22,6 +22,16 @@ float Color::length2( ) const
     return r * r + g * g + b * b;
 }
 
+Color lerp(const Color& a, const Color& b, const float t) 
+{   
+    if( t == 0 ) return a;
+    if( t == 1 ) return b;
+
+    return Color(   a.r - t * (b.r - a.r), 
+                    a.g - t * (b.g - a.g),
+                    a.b - t * (b.b - a.b)  );
+}
+
 Color Black( )
 {
     return Color(0, 0, 0);

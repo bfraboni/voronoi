@@ -82,8 +82,8 @@ int main( int argc, char * argv[] )
             points_next[j] = { v_next.sites[j].x / v_next.w, v_next.sites[j].y / v_next.h, color_next.r, color_next.g, color_next.b };
         }
 
-        int nb_frames = 2000, w = v_curr.w, h = v_curr.h;
-        Transport<Point5> transport(points_curr, points_next, nb_frames);
+        int w = v_curr.w, h = v_curr.h, iter = 100;
+        Transport<Point5> transport(points_curr, points_next, iter);
 
         auto draw = [output_path, size, w, h, &frame]( const std::vector<Point5>& points ) -> void 
         {
@@ -104,9 +104,31 @@ int main( int argc, char * argv[] )
             frame++;
         };   
 
-        transport.transport<>( draw );
-        draw( points_curr );
-        draw( points_next );
+        // transport.transport<>( draw );
+        transport.transport( );
+        
+        assert( (int)transport.tmap.size() == size );
+        int frames = 100;
+        float step = 1.f / (frames - 1.f);
+
+        for( int j = 0; j < 5; ++j )
+            draw( points_curr );
+
+        std::vector<Point5> points( size );
+        for( int j = 0; j < frames; ++j )
+        {
+            float t = j * step;
+            int id= 0;
+            for (const auto& pair : transport.tmap)
+            {   
+                points[id] = lerp( points_curr[pair.first], points_next[pair.second], t );
+                ++id;
+            }
+            draw( points );
+        }
+
+        for( int j = 0; j < 5; ++j )
+            draw( points_next );
     }
 
     return 0;
