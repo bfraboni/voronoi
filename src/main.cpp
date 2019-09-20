@@ -73,11 +73,16 @@ int main( int argc, char * argv[] )
             Color color_curr = colors_curr[j];
             Color color_next = colors_next[j];
 
+            // Color color_curr = rgb2hsv(colors_curr[j]);
+            // color_curr.r /= 360.f;
+            // Color color_next = rgb2hsv(colors_next[j]);
+            // color_next.r /= 360.f;
+
             points_curr[j] = { v_curr.sites[j].x / v_curr.w, v_curr.sites[j].y / v_curr.h, color_curr.r, color_curr.g, color_curr.b };
             points_next[j] = { v_next.sites[j].x / v_next.w, v_next.sites[j].y / v_next.h, color_next.r, color_next.g, color_next.b };
         }
 
-        int nb_frames = 500, w = v_curr.w, h = v_curr.h;
+        int nb_frames = 2000, w = v_curr.w, h = v_curr.h;
         Transport<Point5> transport(points_curr, points_next, nb_frames);
 
         auto draw = [output_path, size, w, h, &frame]( const std::vector<Point5>& points ) -> void 
@@ -89,6 +94,7 @@ int main( int argc, char * argv[] )
             {
                 sites[k] = vec2(points[k][0] * w, points[k][1] * h); 
                 colors[k] = Color( points[k][2], points[k][3], points[k][4] ); 
+                // colors[k] = hsv2rgb(Color( points[k][2]*360.f, points[k][3], points[k][4] )); 
             }
 
             Image voronoi = draw_cells_kd( sites, colors, w, h );

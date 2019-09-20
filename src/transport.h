@@ -97,24 +97,29 @@ struct Transport
             printf("iteration %d rmse %f\n", iter, sum);
 
             // move points of input1
+            float nu = std::sqrt(float(iter) / float(max_iter - iter));
             #pragma omp for
             for( int j = 0; j < point_size; ++j ) 
             {   
-                input1[j] = input1[j] + float(iter) / float(max_iter - iter) * (gamma * old_displacement[j] + displacement[j]);
+                input1[j] = input1[j] +  nu * (gamma * old_displacement[j] + displacement[j]);
 
                 // force color clamping
                 for( int k = 2; k < input1[j].size(); ++k )
                     input1[j][k] = std::min(1.f, std::max(0.f, input1[j][k]));
+                
             }
 
-            // if( iter%100 == 0 )
-            f( input1 );
+            // if( iter%50 == 0 )
+                // f( input1 );
 
             std::swap(displacement, old_displacement);
             std::fill(displacement.begin(), displacement.end(), point_type::zero());
 
             iter++;
         }
+
+        // construct transport map
+        
     }
 };
 

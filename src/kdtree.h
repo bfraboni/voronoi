@@ -4,6 +4,7 @@
 #include <cmath>
 #include <limits>
 #include <algorithm>
+#include <queue>
 #include "point.h"
 
 namespace kdtree
@@ -132,6 +133,65 @@ namespace kdtree
             if( std::abs(dx) >= dmin ) return;
             
             nearest( query, far, depth+1, dmin, best );
+        }
+
+        template<class E, class Container = std::vector<T>, class Compare = std::less<typename Container::value_type>>
+        class fixed_priority_queue : public std::priority_queue<E> 
+        {
+        public:
+            explicit fixed_priority_queue(unsigned int size) : fixed_size(size) {}
+            unsigned int max_size() const {return fixed_size;}
+        private:
+            const unsigned int fixed_size;
+        };
+
+        typedef std::pair<float, int> priority_type;
+        struct priority_compare
+        {
+            bool operator()(const priority_type& a, const priority_type& b) const {return a.first < b.first;}
+        };
+        
+        typedef fixed_priority_queue<priority_type, std::vector<priority_type>, priority_compare> queue_type;
+
+        std::vector<int> knearest( const point_type& query, const int k ) 
+        {
+            queue_type queue(k);
+            knearest( query, (int) nodes.size() - 1, 0, queue );
+            std::vector<int> points;
+            while ( !queue.empty() ) 
+            { 
+                points.push_back(queue.top().second);
+                queue.pop();
+            }
+            std::reverse(points.begin(), points.end());
+            return points;
+        }
+
+        void knearest( const point_type& query, const int id, const int depth, queue_type& queue )
+        {
+            if( id < 0 ) return;
+
+            float d = kdtree::distance<N,P>()(query, nodes[id].data.p);
+            int axis = depth % N;
+            float dx = query[axis] - nodes[id].data.p[axis];
+
+            // if point is nearer to the kth farthest, put point in queue
+            if( queue.size() < queue.max_size() || d < queue.top().first ) 
+            {
+                queue.push( std::make_pair(d, id) );
+                // keep k elements only
+                if( queue.size() > queue.max_size() ) 
+                    queue.pop(); 
+            }
+
+            int near = dx <= 0 ? nodes[id].left : nodes[id].right;
+            int far = dx <= 0 ? nodes[id].right : nodes[id].left;
+
+            knearest( query, near, depth+1, queue );
+            
+            if( std::abs(dx) >= queue.top().first && queue.size() >= queue.max_size() ) return;
+            
+            knearest( query, far, depth+1, queue );
         }
 
         void print( const std::string& prefix, const int node, bool isleft )
