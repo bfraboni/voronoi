@@ -39,10 +39,11 @@ cinekine::voronoi::Graph build_graph( const std::vector<vec2>& sites, const int 
     return cinekine::voronoi::build(std::move(vsites), w, h);
 }
 
-std::vector<Color> evaluate_colors( const cinekine::voronoi::Graph& graph, const Image& image )
+void evaluate_colors(   const cinekine::voronoi::Graph& graph, 
+                        const Image& image,
+                        std::vector<Color>& colors )
 {   
     Dunavant dunavant(5);
-    std::vector<Color> colors( (int)graph.sites().size() );
     #pragma omp for
     for(int i = 0; i < (int)graph.sites().size(); ++i)
     {   
@@ -77,8 +78,6 @@ std::vector<Color> evaluate_colors( const cinekine::voronoi::Graph& graph, const
         // normalize color
         if( colors[site_id].a > 0 ) colors[site_id] = colors[site_id] / colors[site_id].a;
     }
-
-    return colors;
 }
 
 std::vector<float> evaluate_areas( const cinekine::voronoi::Graph& graph )
@@ -112,12 +111,15 @@ std::vector<float> evaluate_areas( const cinekine::voronoi::Graph& graph )
     return areas;
 }
 
-std::vector<vec2> evaluate_gradient( const cinekine::voronoi::Graph& graph, const std::vector<Color>& colors, const Image& image )
+void evaluate_gradient(     const cinekine::voronoi::Graph& graph, 
+                            const std::vector<Color>& colors, 
+                            const Image& image,
+                            std::vector<vec2>& gradients )
 {
     // foreach cell of the voronoi diagram compute the gradient of the objective function over edges
     typedef Rosetta::GaussLegendreQuadrature<vec2, 3> Legendre;
     Legendre legendre;
-    std::vector<vec2> gradients((int)graph.sites().size(), vec2(0,0));
+    // std::vector<vec2> gradients((int)graph.sites().size(), vec2::zero());
 
     #pragma omp for
     for(int i = 0; i < (int)graph.sites().size(); ++i)
@@ -171,10 +173,8 @@ std::vector<vec2> evaluate_gradient( const cinekine::voronoi::Graph& graph, cons
             gradients[cell.site] = gradients[cell.site] + legendre.integrate<>(p0, p1, objective);
         }
         // normalize gradient
-        gradients[cell.site] = normalize(gradients[cell.site]);
+        // gradients[cell.site] = normalize(gradients[cell.site]);
     }
-
-    return gradients;
 }
 
 struct Voronoization
@@ -199,24 +199,77 @@ struct Voronoization
 
         // image voronoisation
         // cf:  Approximating Functions on a Mesh with Restricted Voronoï Diagrams, Nivoliers V, Lévy B, 2013
+        cinekine::voronoi::Graph graph;
+        std::vector<Color> colors( size, Black() );
+        std::vector<vec2> gradients( size, vec2::zero() );
+        std::vector<vec2> old_gradients( size, vec2::zero() );
+        std::vector<float> factors( size, 1 );
         for(int iter = 0; iter < max_iter; ++iter)
         {
             // compute geometric Voronoi graph
             cinekine::voronoi::Graph graph = build_graph( sites, w, h );
             
             // compute sites colors
-            std::vector<Color> colors = evaluate_colors( graph, image );
+            evaluate_colors( graph, image, colors );
 
             // compute gradients
-            std::vector<vec2> gradients = evaluate_gradient( graph, colors, image );
+            evaluate_gradient( graph, colors, image, gradients );
 
             // move sites in the gradient direction
             const float exp = iter / (max_iter - iter);
             const float delta = delta0 * std::pow(sigma, exp); 
 
+        #if 0
+            // classic gradient descenet
+            // #pragma omp for
+            // for(int i = 0; i < this->size; ++i)
+            //     sites[i] = sites[i] - delta * gradients[i];
+        #else
+            // Nesterov optimistaion
+            const float gamma = 0.9;
+            const float threshold = 0.8 ;
+            const float sigma_i = 1.5 ;
+            const float sigma_d = 1/sigma_i ;
+
             #pragma omp for
             for(int i = 0; i < this->size; ++i)
-                sites[i] = sites[i] - delta * gradients[i];
+            {
+                const vec2& grad = gradients[i]; 
+                float norm = length(grad);
+                if( norm == 0 ) continue;
+                
+                const vec2& old_grad = old_gradients[i];
+                float old_norm = length(old_grad);
+
+                if(old_norm != 0) 
+                {
+                    float oscil = dot(grad, old_grad);
+                    oscil /= norm * old_norm ;
+                    if(oscil > 0.8) 
+                    {
+                        factors[i] *= sigma_i ;
+                        //factors[i] = sigma_i ;
+                    } 
+                    else if(oscil < -threshold) 
+                    {
+                        factors[i] *= sigma_d ;
+                        //factors[i] = sigma_d ;
+                    }
+                }
+
+                if( 1 ) 
+                    sites[i] = sites[i] - factors[i] * delta * normalize(grad);
+                    // normalize with cella area ...
+                    // sites[i] = sites[i] - factors[i] * 0.5*sqrt(cell_areas[i]) * delta * normalize(grad);
+                else
+                    sites[i] = sites[i] - delta * (gamma * old_gradients[i] + gradients[i]);
+            }
+        #endif
+
+            std::swap(gradients, old_gradients);
+            std::fill(gradients.begin(), gradients.end(), vec2::zero());
+            std::fill(colors.begin(), colors.end(), Black());
+            std::fill(factors.begin(), factors.end(), 1);
 
             printf("iteration %d\n", iter);
         }
@@ -247,7 +300,8 @@ Image draw_cells_kd( const Image& image, const std::vector<vec2>& sites )
     const int h = image.height();
 
     auto graph = build_graph( sites, w, h );
-    std::vector<Color> colors = evaluate_colors( graph, image );
+    std::vector<Color> colors( sites.size(), Black() );
+    evaluate_colors( graph, image, colors );
 
     std::vector<Point2> points( graph.sites().size() );
     #pragma omp for 

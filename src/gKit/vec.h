@@ -136,6 +136,7 @@ struct vec2
     float operator() ( const unsigned int i ) const { return (&x)[i]; }
     float& operator() ( const unsigned int i ) { return (&x)[i]; }
 
+    static vec2 zero() {return vec2(0,0);}
     float x, y;
 };
 
