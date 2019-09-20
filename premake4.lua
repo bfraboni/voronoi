@@ -58,3 +58,12 @@ project("test-nkdtree")
 	targetdir "bin"
 	includedirs { "src/" }
 	files { "src/gKit/*", "src/*.h", "src/test/nkdtree.cpp" }
+
+project("test-voronoi")
+	language "C++"
+	kind "ConsoleApp"
+	targetdir "bin"
+	includedirs { "src/", "extern/" }
+	files { "src/gKit/*", "src/*.h", "src/test/voronoi.cpp" }
+
+
