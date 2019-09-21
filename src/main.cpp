@@ -174,6 +174,7 @@ int main( int argc, char * argv[] )
             }
         }
 
+
         for( int j = 0; j < 15; ++j )
             draw( points_next );
     }
