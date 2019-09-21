@@ -64,8 +64,10 @@ int main( int argc, char * argv[] )
         cinekine::voronoi::Graph    graph_curr = build_graph( v_curr.sites, v_curr.w, v_curr.h );
         cinekine::voronoi::Graph    graph_next = build_graph( v_next.sites, v_next.w, v_next.h );
         
-        std::vector<Color>          colors_curr = evaluate_colors( graph_curr, v_curr.image );
-        std::vector<Color>          colors_next = evaluate_colors( graph_next, v_next.image );
+        std::vector<Color> colors_curr( size );
+        evaluate_colors( graph_curr, v_curr.image, colors_curr );
+        std::vector<Color> colors_next( size );
+        evaluate_colors( graph_next, v_next.image, colors_next );
 
         #pragma omp for
         for (int j = 0; j < size; ++j)
@@ -82,9 +84,8 @@ int main( int argc, char * argv[] )
             points_next[j] = { v_next.sites[j].x / v_next.w, v_next.sites[j].y / v_next.h, color_next.r, color_next.g, color_next.b };
         }
 
-        int w = v_curr.w, h = v_curr.h, iter = 100;
-        Transport<Point5> transport(points_curr, points_next, iter);
 
+        int w = v_curr.w, h = v_curr.h, iter = 100;
         auto draw = [output_path, size, w, h, &frame]( const std::vector<Point5>& points ) -> void 
         {
             std::vector<vec2> sites( size );
@@ -98,36 +99,82 @@ int main( int argc, char * argv[] )
             }
 
             Image voronoi = draw_cells_kd( sites, colors, w, h );
+            Image graph = draw_graph( voronoi, sites );
             std::stringstream ss;
             ss << output_path << "smooth-" << std::setfill('0') << std::setw(3) << frame << ".png";
-            write_image(voronoi, ss.str().c_str());
+            // write_image(voronoi, ss.str().c_str());
+            write_image(graph, ss.str().c_str());
             frame++;
         };   
 
         // transport.transport<>( draw );
-        transport.transport( );
         
-        assert( (int)transport.tmap.size() == size );
+        // assert( (int)transport.tmap.size() == size );
         int frames = 100;
         float step = 1.f / (frames - 1.f);
 
-        for( int j = 0; j < 5; ++j )
+        for( int j = 0; j < 15; ++j )
             draw( points_curr );
 
-        std::vector<Point5> points( size );
-        for( int j = 0; j < frames; ++j )
+        if( 0 )
         {
-            float t = j * step;
-            int id= 0;
-            for (const auto& pair : transport.tmap)
-            {   
-                points[id] = lerp( points_curr[pair.first], points_next[pair.second], t );
-                ++id;
+            // use classic linear interpolation
+            std::map<int, int> tmap;
+            kdtree::KDTree<Point5, 5> kdtree(points_curr, points_curr);
+            for( int j = 0; j < size; ++j )
+            {
+                int best = kdtree.nearest(points_next[j]);
+                int id = kdtree.nodes[best].data.id;
+                auto insert = tmap.insert( std::make_pair(id, j) );
+                if( !insert.second )
+                {
+                    int k = 2;
+                    while( !insert.second )
+                    {
+                        printf("conflit k=%d j=%d\n", k, j);
+                        std::vector<int> knearest = kdtree.knearest(points_next[j], k);
+                        int best = knearest[k-1];
+                        int id = kdtree.nodes[best].data.id;
+                        insert = tmap.insert( std::make_pair(id, j) );
+                        ++k;
+                    }
+                }
             }
-            draw( points );
+            printf("correspondances\n");
+
+            std::vector<Point5> points( size );
+            for( int j = 0; j < frames; ++j )
+            {
+                float t = j * step;
+                int id= 0;
+                for (const auto& pair : tmap)
+                {   
+                    points[id] = lerp( points_curr[pair.first], points_next[pair.second], t );
+                    ++id;
+                }
+                draw( points );
+            }
+        }
+        else
+        {
+            // use result of transport
+            Transport<Point5> transport(points_curr, points_next, iter);
+            transport.transport( );
+            std::vector<Point5> points( size );
+            for( int j = 0; j < frames; ++j )
+            {
+                float t = j * step;
+                int id= 0;
+                for (const auto& pair : transport.tmap)
+                {   
+                    points[id] = lerp( points_curr[pair.first], points_next[pair.second], t );
+                    ++id;
+                }
+                draw( points );
+            }
         }
 
-        for( int j = 0; j < 5; ++j )
+        for( int j = 0; j < 15; ++j )
             draw( points_next );
     }
 
