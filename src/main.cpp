@@ -72,13 +72,67 @@ int main( int argc, char * argv[] )
         #pragma omp for
         for (int j = 0; j < size; ++j)
         {   
-            Color color_curr = colors_curr[j];
-            Color color_next = colors_next[j];
+            Color color_curr, color_next;
+            
+            // RGB space
+            if( 0 )
+            {
+                color_curr = colors_curr[j];
+                color_next = colors_next[j];
+            }
 
-            // Color color_curr = rgb2hsv(colors_curr[j]);
-            // color_curr.r /= 360.f;
-            // Color color_next = rgb2hsv(colors_next[j]);
-            // color_next.r /= 360.f;
+            // HSV space
+            if( 0 )
+            {
+                color_curr = rgb2hsv(colors_curr[j]);
+                color_curr.r /= 360.f;
+                color_next = rgb2hsv(colors_next[j]);
+                color_next.r /= 360.f;
+            }
+
+            // HSL space
+            if( 0 )
+            {
+                color_curr = rgb2hsl(colors_curr[j]);
+                color_curr.r /= 360.f;
+                color_next = rgb2hsl(colors_next[j]);
+                color_next.r /= 360.f;
+            }
+
+            // YUV space
+            if( 0 )
+            {
+                color_curr = rgb2yuv(colors_curr[j]);
+                color_next = rgb2yuv(colors_next[j]);
+            }
+
+            // LAB space
+            if( 1 )
+            {
+                color_curr = rgb2lab(colors_curr[j]);
+                
+                color_curr.r /= 100.f;
+                
+                color_curr.g += 128.f; 
+                color_curr.g /= 256.f; 
+                
+                color_curr.b += 128.f; 
+                color_curr.b /= 256.f; 
+                
+                color_curr = clamp(color_curr);
+
+                color_next = rgb2lab(colors_next[j]);
+                
+                color_next.r /= 100.f;
+                
+                color_next.g += 128.f; 
+                color_next.g /= 256.f; 
+
+                color_next.b += 128.f; 
+                color_next.b /= 256.f; 
+                
+                color_next = clamp(color_next);
+            }
 
             points_curr[j] = { v_curr.sites[j].x / v_curr.w, v_curr.sites[j].y / v_curr.h, color_curr.r, color_curr.g, color_curr.b };
             points_next[j] = { v_next.sites[j].x / v_next.w, v_next.sites[j].y / v_next.h, color_next.r, color_next.g, color_next.b };
@@ -94,8 +148,33 @@ int main( int argc, char * argv[] )
             for (int k = 0; k < size; ++k)
             {
                 sites[k] = vec2(points[k][0] * w, points[k][1] * h); 
-                colors[k] = Color( points[k][2], points[k][3], points[k][4] ); 
-                // colors[k] = hsv2rgb(Color( points[k][2]*360.f, points[k][3], points[k][4] )); 
+
+                // RGB space
+                if( 0 )
+                    colors[k] = Color( points[k][2], points[k][3], points[k][4] ); 
+                
+                // HSV space
+                if( 0 )
+                    colors[k] = hsv2rgb(Color( points[k][2]*360.f, points[k][3], points[k][4] )); 
+                
+                // HSL space
+                if( 0 )
+                    colors[k] = hsl2rgb(Color( points[k][2]*360.f, points[k][3], points[k][4] )); 
+
+                // YUV space
+                if( 0 )
+                    colors[k] = yuv2rgb(Color( points[k][2], points[k][3], points[k][4] )); 
+
+                // LAB space
+                if( 1 )
+                {
+                    colors[k] = lab2rgb(
+                        Color( 
+                            points[k][2]*100.f, 
+                            points[k][3]*256.f - 128.f, 
+                            points[k][4]*256.f - 128.f 
+                        )); 
+                }
             }
 
             Image voronoi = draw_cells_kd( sites, colors, w, h );
@@ -118,7 +197,7 @@ int main( int argc, char * argv[] )
 
         if( 0 )
         {
-            // use classic linear interpolation
+            // use classic linear interpolation -> equivalent to exhaustive search after some iterations   
             std::map<int, int> tmap;
             kdtree::KDTree<Point5, 5> kdtree(points_curr, points_curr);
             for( int j = 0; j < size; ++j )

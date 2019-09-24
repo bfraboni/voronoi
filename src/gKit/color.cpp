@@ -1,6 +1,7 @@
 
 #include "color.h"
 #include <cmath>
+#include <math.h>
 
 float Color::power( ) const
 {
@@ -30,6 +31,14 @@ Color lerp(const Color& a, const Color& b, const float t)
     return Color(   a.r - t * (b.r - a.r), 
                     a.g - t * (b.g - a.g),
                     a.b - t * (b.b - a.b)  );
+}
+
+Color clamp(const Color& c, const float cmin, const float cmax) 
+{   
+    return Color(   std::fmax(cmin, std::fmin(cmax, c.r)), 
+                    std::fmax(cmin, std::fmin(cmax, c.g)),
+                    std::fmax(cmin, std::fmin(cmax, c.b)),
+                    std::fmax(cmin, std::fmin(cmax, c.a))  );
 }
 
 Color Black( )

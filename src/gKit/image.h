@@ -6,6 +6,7 @@
 #include <cassert>
 #include <vector>
 #include <algorithm>
+#include <fstream>
 
 #include "color.h"
 
@@ -103,6 +104,29 @@ public:
     {
         static Image image;
         return image;
+    }
+
+    void SavePPM( const char *aFilename )
+    {
+        std::ofstream ppm(aFilename);
+        ppm << "P3" << std::endl;
+        ppm << m_width << " " << m_height << std::endl;
+        ppm << "255" << std::endl;
+
+        Color *ptr = &m_data[0];
+
+        for(int y=0; y<m_height; y++)
+        {
+            for(int x=0; x<m_height; x++)
+            {
+                ptr = &m_data[x + y * m_width];
+                int r = std::min(255, std::max(0, int(ptr->r * 255.f)));
+                int g = std::min(255, std::max(0, int(ptr->g * 255.f)));
+                int b = std::min(255, std::max(0, int(ptr->b * 255.f)));
+                ppm << r << " " << g << " " << b << " ";
+            }
+            ppm << std::endl;
+        }
     }
     
     //! comparaison avec la sentinelle. \code if(image == Image::error()) { ... } \endcode

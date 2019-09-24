@@ -43,7 +43,7 @@ struct Transport
     void transport()
     {
         int iter = 0;
-        printf("max_iter %d\n", max_iter);
+        // printf("max_iter %d\n", max_iter);
 
         std::vector<point_type> displacement( point_size, point_type::zero() ), old_displacement( point_size, point_type::zero() ); 
         std::vector< std::pair<float, int> > projections1( point_size ), projections2( point_size ); 
@@ -105,9 +105,8 @@ struct Transport
                 input1[j] = input1[j] +  nu * (gamma * old_displacement[j] + displacement[j]);
 
                 // keep color in [0,1]
-                for( int k = 2; k < input1[j].size(); ++k )
-                    input1[j][k] = std::min(1.f, std::max(0.f, input1[j][k]));
-                
+                // for( int k = 2; k < input1[j].size(); ++k )
+                //     input1[j][k] = std::min(1.f, std::max(0.f, input1[j][k]));
             }
 
             std::swap(displacement, old_displacement);

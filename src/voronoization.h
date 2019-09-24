@@ -450,9 +450,12 @@ Color hsv2rgb(const Color& in)
 Color rgb2hsl(const Color& rgb) {
     Color hsl;
 
-    float r = (rgb.r / 255.0f);
-    float g = (rgb.g / 255.0f);
-    float b = (rgb.b / 255.0f);
+    // float r = (rgb.r / 255.0f);
+    // float g = (rgb.g / 255.0f);
+    // float b = (rgb.b / 255.0f);
+    float r = rgb.r;
+    float g = rgb.g;
+    float b = rgb.b;
 
     float min = std::min(std::min(r, g), b);
     float max = std::max(std::max(r, g), b);
@@ -495,7 +498,8 @@ Color rgb2hsl(const Color& rgb) {
     return hsl;
 }
 
-float hue2rgb(float v1, float v2, float vH) {
+float hue2rgb(float v1, float v2, float vH) 
+{
     if (vH < 0)
         vH += 1;
 
@@ -514,7 +518,8 @@ float hue2rgb(float v1, float v2, float vH) {
     return v1;
 }
 
-Color hsl2rgb(const Color& hsl) {
+Color hsl2rgb(const Color& hsl) 
+{
     float r = 0;
     float g = 0;
     float b = 0;
@@ -531,26 +536,76 @@ Color hsl2rgb(const Color& hsl) {
         v2 = (hsl.b < 0.5) ? (hsl.b * (1 + hsl.g)) : ((hsl.b + hsl.g) - (hsl.b * hsl.g));
         v1 = 2 * hsl.b - v2;
 
-        r = 255.f * hue2rgb(v1, v2, hue + (1.f / 3.f));
-        g = 255.f * hue2rgb(v1, v2, hue);
-        b = 255.f * hue2rgb(v1, v2, hue - (1.f / 3.f));
+        // r = 255.f * hue2rgb(v1, v2, hue + (1.f / 3.f));
+        // g = 255.f * hue2rgb(v1, v2, hue);
+        // b = 255.f * hue2rgb(v1, v2, hue - (1.f / 3.f));
+        r = hue2rgb(v1, v2, hue + (1.f / 3.f));
+        g = hue2rgb(v1, v2, hue);
+        b = hue2rgb(v1, v2, hue - (1.f / 3.f));
     }
 
     return Color(r, g, b);
 }
 
-Color rgb2yuv(const Color& rgb) {
+Color rgb2yuv( const Color& rgb ) 
+{
     double y = rgb.r * .299000 + rgb.g * .587000 + rgb.b * .114000;
     double u = rgb.r * -.168736 + rgb.g * -.331264 + rgb.b * .500000 + 128;
     double v = rgb.r * .500000 + rgb.g * -.418688 + rgb.b * -.081312 + 128;
     return Color(y, u, v);
 }
 
-Color yuv2rgb(const Color& yuv) {
+Color yuv2rgb( const Color& yuv ) 
+{
     float r = yuv.r + 1.4075 * (yuv.b - 128);
     float g = yuv.r - 0.3455 * (yuv.g - 128) - (0.7169 * (yuv.b - 128));
     float b = yuv.r + 1.7790 * (yuv.g - 128);
     return Color(r, g, b);
+}
+
+Color lab2rgb( const Color& lab)
+{
+    float   y = (lab.r + 16) / 116,
+            x = lab.g / 500 + y,
+            z = y - lab.b / 200,
+            r, g, b;
+
+    x = 0.95047 * ((x * x * x > 0.008856) ? x * x * x : (x - 16.0 / 116.0) / 7.787);
+    y = 1.00000 * ((y * y * y > 0.008856) ? y * y * y : (y - 16.0 / 116.0) / 7.787);
+    z = 1.08883 * ((z * z * z > 0.008856) ? z * z * z : (z - 16.0 / 116.0) / 7.787);
+
+    r = x *  3.2406 + y * -1.5372 + z * -0.4986;
+    g = x * -0.9689 + y *  1.8758 + z *  0.0415;
+    b = x *  0.0557 + y * -0.2040 + z *  1.0570;
+
+    r = (r > 0.0031308) ? (1.055 * std::pow(r, 1.0/2.4) - 0.055) : 12.92 * r;
+    g = (g > 0.0031308) ? (1.055 * std::pow(g, 1.0/2.4) - 0.055) : 12.92 * g;
+    b = (b > 0.0031308) ? (1.055 * std::pow(b, 1.0/2.4) - 0.055) : 12.92 * b;
+
+    return clamp(Color(r, g, b, 1));
+}
+
+
+Color rgb2lab( const Color& rgb )
+{
+    float   r = rgb.r,
+            g = rgb.g,
+            b = rgb.b,
+            x, y, z;
+
+    r = (r > 0.04045) ? std::pow((r + 0.055) / 1.055, 2.4) : r / 12.92;
+    g = (g > 0.04045) ? std::pow((g + 0.055) / 1.055, 2.4) : g / 12.92;
+    b = (b > 0.04045) ? std::pow((b + 0.055) / 1.055, 2.4) : b / 12.92;
+
+    x = (r * 0.4124 + g * 0.3576 + b * 0.1805) / 0.95047;
+    y = (r * 0.2126 + g * 0.7152 + b * 0.0722) / 1.00000;
+    z = (r * 0.0193 + g * 0.1192 + b * 0.9505) / 1.08883;
+
+    x = (x > 0.008856) ? std::pow(x, 1.0 / 3.0) : (7.787 * x) + 16.0 / 116.0;
+    y = (y > 0.008856) ? std::pow(y, 1.0 / 3.0) : (7.787 * y) + 16.0 / 116.0;
+    z = (z > 0.008856) ? std::pow(z, 1.0 / 3.0) : (7.787 * z) + 16.0 / 116.0;
+
+    return Color((116 * y) - 16, 500 * (x - y), 200 * (y - z));
 }
 
 #endif

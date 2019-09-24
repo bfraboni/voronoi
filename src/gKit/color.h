@@ -56,6 +56,7 @@ Color operator/ ( const float k, const Color& c );
 Color operator/ ( const Color& c, const float k );
 
 Color lerp(const Color& a, const Color& b, const float t) ;
+Color clamp(const Color& c, const float cmin = 0, const float cmax = 1) ;
 
 ///@}
 #endif
