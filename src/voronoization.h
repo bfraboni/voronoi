@@ -80,10 +80,9 @@ void evaluate_colors(   const cinekine::voronoi::Graph& graph,
     }
 }
 
-std::vector<float> evaluate_areas( const cinekine::voronoi::Graph& graph )
+void evaluate_areas( const cinekine::voronoi::Graph& graph, std::vector<float>& areas )
 {   
     Dunavant dunavant(5);
-    std::vector<float> areas( (int)graph.sites().size() );
     #pragma omp for
     for(int i = 0; i < (int)graph.sites().size(); ++i)
     {   
@@ -107,8 +106,6 @@ std::vector<float> evaluate_areas( const cinekine::voronoi::Graph& graph )
             areas[site_id] += t.area();
         }
     }
-
-    return areas;
 }
 
 void evaluate_gradient(     const cinekine::voronoi::Graph& graph, 
@@ -201,9 +198,11 @@ struct Voronoization
         // cf:  Approximating Functions on a Mesh with Restricted Voronoï Diagrams, Nivoliers V, Lévy B, 2013
         cinekine::voronoi::Graph graph;
         std::vector<Color> colors( size, Black() );
+        std::vector<Color> old_colors( size, Black() );
         std::vector<vec2> gradients( size, vec2::zero() );
         std::vector<vec2> old_gradients( size, vec2::zero() );
         std::vector<float> factors( size, 1 );
+        std::vector<float> areas( size, 0 );
         for(int iter = 0; iter < max_iter; ++iter)
         {
             // compute geometric Voronoi graph
@@ -212,8 +211,20 @@ struct Voronoization
             // compute sites colors
             evaluate_colors( graph, image, colors );
 
+            // compute sites colors
+            evaluate_areas( graph, areas );
+
             // compute gradients
             evaluate_gradient( graph, colors, image, gradients );
+
+            // kdtree construction
+            typedef kdtree::Point<2> Point2;
+            typedef kdtree::KDTree<float, 2> KDTree;
+            std::vector<Point2> points( graph.sites().size() );
+            #pragma omp for 
+            for( int i = 0; i < (int)graph.sites().size(); ++i)
+                points[i] = {graph.sites()[i].x, graph.sites()[i].y};
+            KDTree kdtree( points, areas );
 
             // move sites in the gradient direction
             const float exp = iter / (max_iter - iter);
@@ -229,47 +240,69 @@ struct Voronoization
             const float gamma = 0.9;
             const float threshold = 0.8 ;
             const float sigma_i = 1.5 ;
-            const float sigma_d = 1/sigma_i ;
+            const float sigma_d = 1 / sigma_i ;
 
             #pragma omp for
             for(int i = 0; i < this->size; ++i)
             {
-                const vec2& grad = gradients[i]; 
-                float norm = length(grad);
-                if( norm == 0 ) continue;
-                
-                const vec2& old_grad = old_gradients[i];
-                float old_norm = length(old_grad);
-
-                if(old_norm != 0) 
+                if( 
+                    // areas[i] < 1e-4 || 
+                    sites[i].x < 0 || 
+                    sites[i].x >= w || 
+                    sites[i].y < 0 || 
+                    sites[i].y >= h )
                 {
-                    float oscil = dot(grad, old_grad);
-                    oscil /= norm * old_norm ;
-                    if(oscil > 0.8) 
-                    {
-                        factors[i] *= sigma_i ;
-                        //factors[i] = sigma_i ;
-                    } 
-                    else if(oscil < -threshold) 
-                    {
-                        factors[i] *= sigma_d ;
-                        //factors[i] = sigma_d ;
-                    }
+                    // reproject site at half the distance from the nearest
+                    Point2 query = {sites[i].x, sites[i].y};
+                    auto nearest = kdtree.nearest_point( query );
+                    sites[i] = 0.5 * ( sites[i] + vec2(nearest[0], nearest[1]));
                 }
-
-                if( 1 ) 
-                    sites[i] = sites[i] - factors[i] * delta * normalize(grad);
-                    // normalize with cella area ...
-                    // sites[i] = sites[i] - factors[i] * 0.5*sqrt(cell_areas[i]) * delta * normalize(grad);
                 else
-                    sites[i] = sites[i] - delta * (gamma * old_gradients[i] + gradients[i]);
+                {
+                    if( 1 )
+                    {
+                        const vec2& grad = gradients[i]; 
+                        float norm = length(grad);
+                        if( norm == 0 ) continue;
+                        
+                        if((i+iter)%10 == 0) 
+                            factors[i] = 1 ;
+                        const vec2& old_grad = old_gradients[i];
+                        float old_norm = length(old_grad);
+
+                        if(old_norm != 0) 
+                        {
+                            float oscil = dot(grad, old_grad);
+                            oscil /= norm * old_norm ;
+                            if(oscil > threshold) 
+                            {
+                                factors[i] *= sigma_i ;
+                            } 
+                            else if(oscil < -threshold) 
+                            {
+                                factors[i] *= sigma_d ;
+                            }
+                        }
+
+                        // sites[i] = sites[i] - factors[i] * delta * normalize(grad);
+                        // normalize with cella area ...
+                        // sites[i] = sites[i] - factors[i] * 0.5 * std::sqrt( areas[i] ) * delta * grad / norm;
+                        // Nesterov adaptative
+                        sites[i] = sites[i] - delta * factors[i] * (gamma * normalize(old_gradients[i]) + normalize(gradients[i]));
+                    } 
+                    else
+                        // Nesterov simple
+                        sites[i] = sites[i] - delta * (gamma * normalize(old_gradients[i]) + normalize(gradients[i]));
+                }
             }
         #endif
 
             std::swap(gradients, old_gradients);
+            std::swap(colors, old_colors);
             std::fill(gradients.begin(), gradients.end(), vec2::zero());
             std::fill(colors.begin(), colors.end(), Black());
             std::fill(factors.begin(), factors.end(), 1);
+            std::fill(areas.begin(), areas.end(), 0);
 
             printf("iteration %d\n", iter);
         }

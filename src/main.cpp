@@ -75,7 +75,7 @@ int main( int argc, char * argv[] )
             Color color_curr, color_next;
             
             // RGB space
-            if( 0 )
+            if( 1 )
             {
                 color_curr = colors_curr[j];
                 color_next = colors_next[j];
@@ -107,7 +107,7 @@ int main( int argc, char * argv[] )
             }
 
             // LAB space
-            if( 1 )
+            if( 0 )
             {
                 color_curr = rgb2lab(colors_curr[j]);
                 
@@ -150,7 +150,7 @@ int main( int argc, char * argv[] )
                 sites[k] = vec2(points[k][0] * w, points[k][1] * h); 
 
                 // RGB space
-                if( 0 )
+                if( 1 )
                     colors[k] = Color( points[k][2], points[k][3], points[k][4] ); 
                 
                 // HSV space
@@ -166,7 +166,7 @@ int main( int argc, char * argv[] )
                     colors[k] = yuv2rgb(Color( points[k][2], points[k][3], points[k][4] )); 
 
                 // LAB space
-                if( 1 )
+                if( 0 )
                 {
                     colors[k] = lab2rgb(
                         Color( 
