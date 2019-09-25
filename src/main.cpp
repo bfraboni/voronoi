@@ -46,7 +46,7 @@ int main( int argc, char * argv[] )
         write_image(graph, ss.str().c_str());
     }
 
-    // smooth transition
+    // optimal transport between voronoi diagrams
     int frame = 0;
     for( int i = 0; i < (int)images.size()-1; ++i )
     {
@@ -66,6 +66,7 @@ int main( int argc, char * argv[] )
         
         std::vector<Color> colors_curr( size );
         evaluate_colors( graph_curr, v_curr.image, colors_curr );
+        
         std::vector<Color> colors_next( size );
         evaluate_colors( graph_next, v_next.image, colors_next );
 
@@ -186,9 +187,6 @@ int main( int argc, char * argv[] )
             frame++;
         };   
 
-        // transport.transport<>( draw );
-        
-        // assert( (int)transport.tmap.size() == size );
         int frames = 100;
         float step = 1.f / (frames - 1.f);
 

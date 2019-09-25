@@ -8,6 +8,7 @@
 #include "kdtree.h"
 #include "line.h"
 #include "triangle.h"
+#include "clipping.h"
 
 #include "voronoi.hpp"
 #include "legendre.hpp"
@@ -43,7 +44,7 @@ void evaluate_colors(   const cinekine::voronoi::Graph& graph,
                         const Image& image,
                         std::vector<Color>& colors )
 {   
-    Dunavant dunavant(5);
+    Dunavant dunavant(6);
     #pragma omp for
     for(int i = 0; i < (int)graph.sites().size(); ++i)
     {   
@@ -71,18 +72,20 @@ void evaluate_colors(   const cinekine::voronoi::Graph& graph,
             {
                 vec2 uv = dunavant.point(j);
                 float w = dunavant.weight(j) * area;
+                if( w == 0 ) continue;
                 vec2 p = t.point( uv );
-                colors[site_id] = colors[site_id] + image.sample(p.x, p.y) * w;
+                Color sample = image.sample(p.x, p.y);
+                colors[site_id].a += w;
+                colors[site_id].r += (sample.r - colors[site_id].r) * w / colors[site_id].a;
+                colors[site_id].g += (sample.g - colors[site_id].g) * w / colors[site_id].a;
+                colors[site_id].b += (sample.b - colors[site_id].b) * w / colors[site_id].a;
             }
         }
-        // normalize color
-        if( colors[site_id].a > 0 ) colors[site_id] = colors[site_id] / colors[site_id].a;
     }
 }
 
 void evaluate_areas( const cinekine::voronoi::Graph& graph, std::vector<float>& areas )
 {   
-    Dunavant dunavant(5);
     #pragma omp for
     for(int i = 0; i < (int)graph.sites().size(); ++i)
     {   
@@ -114,9 +117,8 @@ void evaluate_gradient(     const cinekine::voronoi::Graph& graph,
                             std::vector<vec2>& gradients )
 {
     // foreach cell of the voronoi diagram compute the gradient of the objective function over edges
-    typedef Rosetta::GaussLegendreQuadrature<vec2, 3> Legendre;
+    typedef Rosetta::GaussLegendreQuadrature<vec2, 6> Legendre;
     Legendre legendre;
-    // std::vector<vec2> gradients((int)graph.sites().size(), vec2::zero());
 
     #pragma omp for
     for(int i = 0; i < (int)graph.sites().size(); ++i)
@@ -187,6 +189,12 @@ struct Voronoization
         h(image.height()),
         size(size)
     {
+
+        // random distribution 
+        std::random_device dev;
+        std::mt19937 rng(dev());
+        std::uniform_real_distribution<float> distribution(0.f,1.f);
+
         // gradient descent params
         delta0 = 0.02f * std::sqrt(float(w * w + h * h)); 
         sigma = 0.5f; 
@@ -206,7 +214,7 @@ struct Voronoization
         for(int iter = 0; iter < max_iter; ++iter)
         {
             // compute geometric Voronoi graph
-            cinekine::voronoi::Graph graph = build_graph( sites, w, h );
+            graph = build_graph( sites, w, h );
             
             // compute sites colors
             evaluate_colors( graph, image, colors );
@@ -218,17 +226,20 @@ struct Voronoization
             evaluate_gradient( graph, colors, image, gradients );
 
             // kdtree construction
-            typedef kdtree::Point<2> Point2;
-            typedef kdtree::KDTree<float, 2> KDTree;
-            std::vector<Point2> points( graph.sites().size() );
+            typedef kdtree::Point<5> KDPoint;
+            typedef kdtree::KDTree<float, 5> KDTree;
+            std::vector<KDPoint> points( this->size );
             #pragma omp for 
-            for( int i = 0; i < (int)graph.sites().size(); ++i)
-                points[i] = {graph.sites()[i].x, graph.sites()[i].y};
+            for( int i = 0; i <  this->size; ++i)
+                points[i] = {sites[i].x, sites[i].y, colors[i].r, colors[i].g, colors[i].b};
+                // points[i] = {sites[i].x, sites[i].y};
             KDTree kdtree( points, areas );
 
             // move sites in the gradient direction
-            const float exp = iter / (max_iter - iter);
+            const float exp = float(iter) / float(max_iter - iter);
             const float delta = delta0 * std::pow(sigma, exp); 
+
+            printf("%f %f\n", exp, delta);
 
         #if 0
             // classic gradient descenet
@@ -245,54 +256,77 @@ struct Voronoization
             #pragma omp for
             for(int i = 0; i < this->size; ++i)
             {
-                if( 
-                    // areas[i] < 1e-4 || 
-                    sites[i].x < 0 || 
-                    sites[i].x >= w || 
-                    sites[i].y < 0 || 
-                    sites[i].y >= h )
+                if( areas[i] < float(size) / float(w * h) ) 
                 {
-                    // reproject site at half the distance from the nearest
-                    Point2 query = {sites[i].x, sites[i].y};
+                    // reproject site at half the distance from the nearest site
+                    KDPoint query = {sites[i].x, sites[i].y, colors[i].r, colors[i].g, colors[i].b};
+                    // KDPoint query = {sites[i].x, sites[i].y };
                     auto nearest = kdtree.nearest_point( query );
-                    sites[i] = 0.5 * ( sites[i] + vec2(nearest[0], nearest[1]));
+                    sites[i] = 0.5 * ( sites[i] + vec2(nearest[0], nearest[1]) );
                 }
                 else
                 {
+                    // Vincent's solution
                     if( 1 )
                     {
                         const vec2& grad = gradients[i]; 
                         float norm = length(grad);
                         if( norm == 0 ) continue;
                         
-                        if((i+iter)%10 == 0) 
-                            factors[i] = 1 ;
+                        if((i+iter)%10 == 0) factors[i] = 1;
+
                         const vec2& old_grad = old_gradients[i];
                         float old_norm = length(old_grad);
 
                         if(old_norm != 0) 
                         {
                             float oscil = dot(grad, old_grad);
-                            oscil /= norm * old_norm ;
+                            oscil /= norm * old_norm;
                             if(oscil > threshold) 
                             {
-                                factors[i] *= sigma_i ;
+                                factors[i] *= sigma_i;
                             } 
                             else if(oscil < -threshold) 
                             {
-                                factors[i] *= sigma_d ;
+                                factors[i] *= sigma_d;
                             }
                         }
 
-                        // sites[i] = sites[i] - factors[i] * delta * normalize(grad);
                         // normalize with cella area ...
-                        // sites[i] = sites[i] - factors[i] * 0.5 * std::sqrt( areas[i] ) * delta * grad / norm;
+                        // vec2 next_pos = sites[i] - factors[i] * 0.5 * std::sqrt( areas[i] ) * delta * grad / norm;
+                        
                         // Nesterov adaptative
-                        sites[i] = sites[i] - delta * factors[i] * (gamma * normalize(old_gradients[i]) + normalize(gradients[i]));
-                    } 
-                    else
+                        vec2 next_pos = sites[i] - delta * factors[i] * (gamma * normalize(old_gradients[i]) + normalize(gradients[i]));
+                        // vec2 next_pos = sites[i] - delta * factors[i] * 0.5 * std::sqrt( areas[i] ) * (normalize(old_gradients[i]) + normalize(gradients[i]));
+
+                        float dd = std::max(delta, 0.5f);
+                        // if new pos is out of bounds , move back the point inside the image area
+                        if( next_pos.x < dd || next_pos.x > w-dd || next_pos.y < dd || next_pos.y > h - dd )
+                        {   
+                            // find intersection point with image rectangle and clip position
+                            next_pos = cohenSutherlandClip(next_pos, sites[i], vec2(dd, dd), vec2(w-dd, h-dd));
+                        }
+
                         // Nesterov simple
-                        sites[i] = sites[i] - delta * (gamma * normalize(old_gradients[i]) + normalize(gradients[i]));
+                        sites[i] = next_pos;
+                    } 
+                    // mine
+                    else
+                    {
+                        vec2 next_pos = sites[i] - delta * (gamma * normalize(old_gradients[i]) + normalize(gradients[i]));
+
+                        // float dd = std::max(delta, 0.5f);
+                        float dd = 0.5f;
+                        // if new pos is out of bounds , move back the point inside the image area
+                        if( next_pos.x < dd || next_pos.x > w-dd || next_pos.y < dd || next_pos.y > h-dd )
+                        {   
+                            // find intersection point with image rectangle and clip position
+                            next_pos = cohenSutherlandClip(next_pos, sites[i], vec2(dd, dd), vec2(w-dd, h-dd));
+                        }
+
+                        // Nesterov simple
+                        sites[i] = next_pos;
+                    }
                 }
             }
         #endif
@@ -301,7 +335,7 @@ struct Voronoization
             std::swap(colors, old_colors);
             std::fill(gradients.begin(), gradients.end(), vec2::zero());
             std::fill(colors.begin(), colors.end(), Black());
-            std::fill(factors.begin(), factors.end(), 1);
+            // std::fill(factors.begin(), factors.end(), 1);
             std::fill(areas.begin(), areas.end(), 0);
 
             printf("iteration %d\n", iter);
