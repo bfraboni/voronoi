@@ -101,7 +101,7 @@ struct Transport
             float nu = std::sqrt(float(iter) / float(max_iter - iter));
             for( int j = 0; j < point_size; ++j ) 
             {   
-                input1[j] = input1[j] +  nu * (gamma * old_displacement[j] + displacement[j]);
+                input1[j] = input1[j] + nu * (gamma * old_displacement[j] + displacement[j]);
 
                 // keep color in [0,1]
                 // for( int k = 2; k < input1[j].size(); ++k )

@@ -40,8 +40,8 @@ void evaluate_colors(   const cinekine::voronoi::Graph& graph,
                         const Image& image,
                         std::vector<Color>& colors )
 {   
-    const float min_area = 4.f; 
-    Dunavant dunavant(5);
+    const float min_area = 1.f; 
+    Dunavant dunavant(2);
     // #pragma omp for
     for(int i = 0; i < (int)graph.sites().size(); ++i)
     {   
@@ -51,6 +51,8 @@ void evaluate_colors(   const cinekine::voronoi::Graph& graph,
         const int cell_id = site.cell;
         const auto& cell = graph.cells()[cell_id];
 
+        float wcell = 0;
+        Color ccell;
         for(const auto& halfedge: cell.halfEdges)
         {
             // get current edge info
@@ -65,17 +67,25 @@ void evaluate_colors(   const cinekine::voronoi::Graph& graph,
             float area = t.area();
 
             // evaluate the triangle color integral using Dunavant quadrature
+            Color ctriangle;
+            float wtriangle = 0;
             for( int j = 0; j < dunavant.size(); ++j )
             {
+                float w = dunavant.weight(j);
                 vec2 uv = dunavant.point(j);
-                float w = area > min_area ? dunavant.weight(j) * area : 1;
                 vec2 p = t.point( uv );
-                colors[site_id] = colors[site_id] + image.sample(p.x, p.y) * w;
+                ctriangle += image.sample(p.x, p.y) * w;
+                wtriangle += w;
             }
+            if( wtriangle > 0 ) ctriangle /= wtriangle;
+
+            ccell += ctriangle * area;
+            wcell += area;
         }
         // normalize color
-        if( colors[site_id].a > 0 ) 
-            colors[site_id] = colors[site_id] / colors[site_id].a;
+        if( wcell > 0 ) ccell /= wcell;
+        
+        colors[site_id] = ccell;
     }
 }
 
