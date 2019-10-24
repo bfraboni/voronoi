@@ -4,6 +4,7 @@
 #include <chrono>
 #include <random>
 #include <map>
+#include <omp.h>
 #include "point.h"
 
 template<typename point_type>
@@ -42,6 +43,7 @@ struct Transport
 
     void transport()
     {
+        printf("transport %d...\n", (int)omp_get_thread_num());
         int iter = 0;
         // printf("max_iter %d\n", max_iter);
 
@@ -52,11 +54,9 @@ struct Transport
         while( iter < max_iter )
         {
             std::vector<point_type> copy = input1;
-            #pragma omp for
             for( int j = 0; j < point_size; ++j ) 
                 copy[j] = copy[j] + gamma * old_displacement[j];
             
-            #pragma omp for
             for( int i = 0; i < m; ++i )
             {
                 // random ND slice
@@ -84,7 +84,6 @@ struct Transport
 
                     for( int k = 0; k < d.size(); ++k )
                     {
-                        #pragma omp atomic
                         displacement[id][k] += v[k];
                     }
                 }
@@ -95,11 +94,11 @@ struct Transport
             for( int j = 0; j < point_size; ++j ) 
                 sum += length2(displacement[j]);
             sum = std::sqrt(sum / point_size);
-            printf("iteration %d rmse %f\n", iter, sum);
+            if( iter == max_iter - 1 ) 
+                printf("rmse %f\n", sum);
 
             // move points of input1
             float nu = std::sqrt(float(iter) / float(max_iter - iter));
-            #pragma omp for
             for( int j = 0; j < point_size; ++j ) 
             {   
                 input1[j] = input1[j] +  nu * (gamma * old_displacement[j] + displacement[j]);
@@ -137,7 +136,7 @@ struct Transport
             }
         }
 
-        printf("transport fini\n");
+        printf("transport %d done\n", (int)omp_get_thread_num());
     }
 };
 

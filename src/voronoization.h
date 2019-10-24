@@ -1,6 +1,8 @@
 #ifndef VORONOIZATION_H
 #define VORONOIZATION_H
 
+#include <omp.h>
+
 #include "vec.h"
 #include "color.h"
 #include "image_io.h"
@@ -12,13 +14,8 @@
 #include "voronoi.hpp"
 #include "legendre.hpp"
 
-std::vector<vec2> init( const int w, const int h, const int size )
+std::vector<vec2> init( const int w, const int h, const int size, std::mt19937& rng, std::uniform_real_distribution<float>& distribution )
 {
-    // random distribution of the sites
-    std::random_device dev;
-    std::mt19937 rng(dev());
-    std::uniform_real_distribution<float> distribution(0.f,1.f);
-
     // generate sites position randomly
     std::vector<vec2> sites;
     for(int i = 0; i < size; i++)
@@ -31,7 +28,7 @@ cinekine::voronoi::Graph build_graph( const std::vector<vec2>& sites, const int 
 {
     // copy sites for nearest neighbour search and voronoi construction
     cinekine::voronoi::Sites vsites( sites.size() );
-    #pragma omp for 
+    // #pragma omp for 
     for(int i = 0; i < (int)sites.size(); ++i) 
         vsites[i] = cinekine::voronoi::Vertex(sites[i].x, sites[i].y);
 
@@ -44,7 +41,7 @@ void evaluate_colors(   const cinekine::voronoi::Graph& graph,
                         std::vector<Color>& colors )
 {   
     Dunavant dunavant(5);
-    #pragma omp for
+    // #pragma omp for
     for(int i = 0; i < (int)graph.sites().size(); ++i)
     {   
         // get current site / cell info
@@ -83,7 +80,7 @@ void evaluate_colors(   const cinekine::voronoi::Graph& graph,
 void evaluate_areas( const cinekine::voronoi::Graph& graph, std::vector<float>& areas )
 {   
     Dunavant dunavant(5);
-    #pragma omp for
+    // #pragma omp for
     for(int i = 0; i < (int)graph.sites().size(); ++i)
     {   
         // get current site / cell info
@@ -118,7 +115,7 @@ void evaluate_gradient(     const cinekine::voronoi::Graph& graph,
     Legendre legendre;
     // std::vector<vec2> gradients((int)graph.sites().size(), vec2::zero());
 
-    #pragma omp for
+    // #pragma omp for
     for(int i = 0; i < (int)graph.sites().size(); ++i)
     {   
         // get current site / cell info
@@ -176,23 +173,24 @@ void evaluate_gradient(     const cinekine::voronoi::Graph& graph,
 
 struct Voronoization
 {
-    const Image& image;
     std::vector<vec2> sites;
-    float sigma = 0.5f, delta0;
-    int w, h, size;
+    Voronoization(){};
 
-    Voronoization( const Image& image, const float size, const int max_iter ) :
-        image(image),
-        w(image.width()),
-        h(image.height()),
-        size(size)
+    Voronoization( const Image& image, const float size, const int max_iter )
     {
+        printf("voronoization %d...\n", (int)omp_get_thread_num());
+        const int w = image.width();
+        const int h = image.height();
+
         // gradient descent params
-        delta0 = 0.02f * std::sqrt(float(w * w + h * h)); 
-        sigma = 0.5f; 
+        const float delta0 = 0.02f * std::sqrt(float(w * w + h * h)); 
+        const float sigma = 0.5f; 
 
         // init sites randomly
-        sites = init(this->w, this->h, this->size);
+        std::random_device dev;
+        std::mt19937 rng(dev());
+        std::uniform_real_distribution<float> distribution(0.f,1.f);
+        sites = init(w, h, size, rng, distribution);
 
         // image voronoisation
         // cf:  Approximating Functions on a Mesh with Restricted Voronoï Diagrams, Nivoliers V, Lévy B, 2013
@@ -203,11 +201,18 @@ struct Voronoization
         std::vector<vec2> old_gradients( size, vec2::zero() );
         std::vector<float> factors( size, 1 );
         std::vector<float> areas( size, 0 );
+
+        std::vector<vec2> means( size, vec2::zero() );
+        std::vector<float> variances( size, 0 );
+        const float beta1 = 0.9;
+        const float beta2 = 0.999;
+        const float eps = 1e-6;
+
         for(int iter = 0; iter < max_iter; ++iter)
         {
             // compute geometric Voronoi graph
             cinekine::voronoi::Graph graph = build_graph( sites, w, h );
-            
+
             // compute sites colors
             evaluate_colors( graph, image, colors );
 
@@ -218,12 +223,13 @@ struct Voronoization
             evaluate_gradient( graph, colors, image, gradients );
 
             // kdtree construction
-            typedef kdtree::Point<2> Point2;
-            typedef kdtree::KDTree<float, 2> KDTree;
-            std::vector<Point2> points( graph.sites().size() );
-            #pragma omp for 
+            typedef kdtree::Point<5> Point5;
+            typedef kdtree::KDTree<float, 5> KDTree;
+            std::vector<Point5> points( graph.sites().size() );
+            #pragma omp parallel for 
             for( int i = 0; i < (int)graph.sites().size(); ++i)
-                points[i] = {graph.sites()[i].x, graph.sites()[i].y};
+                points[i] = {sites[i].x, sites[i].y, colors[i].r, colors[i].g, colors[i].b};
+
             KDTree kdtree( points, areas );
 
             // move sites in the gradient direction
@@ -232,7 +238,7 @@ struct Voronoization
 
         #if 0
             // classic gradient descenet
-            // #pragma omp for
+            #pragma omp for
             // for(int i = 0; i < this->size; ++i)
             //     sites[i] = sites[i] - delta * gradients[i];
         #else
@@ -242,24 +248,26 @@ struct Voronoization
             const float sigma_i = 1.5 ;
             const float sigma_d = 1 / sigma_i ;
 
-            #pragma omp for
-            for(int i = 0; i < this->size; ++i)
+            // #pragma omp for
+            for(int i = 0; i < size; ++i)
             {
-                if( 
-                    // areas[i] < 1e-4 || 
-                    sites[i].x < 0 || 
-                    sites[i].x >= w || 
-                    sites[i].y < 0 || 
-                    sites[i].y >= h )
+                // int cmp = 0;
+                // if( 
+                //     // areas[i] < 1e-4 || 
+                //     sites[i].x < 0 || 
+                //     sites[i].x >= w || 
+                //     sites[i].y < 0 || 
+                //     sites[i].y >= h )
+                // {
+                //     // reproject site at half the distance from the nearest
+                //     Point5 query = {sites[i].x, sites[i].y, colors[i].r, colors[i].g, colors[i].b};
+                //     auto nearest = kdtree.nearest_point( query );
+                //     sites[i] = 0.5 * ( sites[i] + vec2(nearest[0], nearest[1]) );
+                //     // ++cmp;
+                // }
+                // else
                 {
-                    // reproject site at half the distance from the nearest
-                    Point2 query = {sites[i].x, sites[i].y};
-                    auto nearest = kdtree.nearest_point( query );
-                    sites[i] = 0.5 * ( sites[i] + vec2(nearest[0], nearest[1]));
-                }
-                else
-                {
-                    if( 1 )
+                    if( 0 )
                     {
                         const vec2& grad = gradients[i]; 
                         float norm = length(grad);
@@ -290,9 +298,35 @@ struct Voronoization
                         // Nesterov adaptative
                         sites[i] = sites[i] - delta * factors[i] * (gamma * normalize(old_gradients[i]) + normalize(gradients[i]));
                     } 
+                    else if( 1 )
+                    {
+                        // Nesterov simple + optimisation w.r.t to cell area (small cells moves faster)
+                        sites[i] = sites[i] - delta * 2.f / std::sqrt(areas[i]) * (gamma * normalize(old_gradients[i]) + normalize(gradients[i]));
+                        
+                        if( sites[i].x < 0 || sites[i].x >= w )
+                        {
+                            float rd = distribution(rng) * delta0;
+                            sites[i].x = std::min(w - rd, std::max(rd, sites[i].x));
+                        }
+
+                        if( sites[i].y < 0 || sites[i].y >= h )
+                        {
+                            float rd = distribution(rng) * delta0;
+                            sites[i].y = std::min(w - rd, std::max(rd, sites[i].y));
+                        }
+                    }
                     else
-                        // Nesterov simple
-                        sites[i] = sites[i] - delta * (gamma * normalize(old_gradients[i]) + normalize(gradients[i]));
+                    {
+                        // adam method  
+                        // vec2 g = normalize(gradients[i]);
+                        means[i] = beta1 * means[i] + (1 - beta1) * gradients[i];
+                        variances[i] = beta2 * variances[i] + (1 - beta2) * dot(gradients[i], gradients[i]);
+
+                        vec2 nmean = means[i] / (1 - std::pow(beta1, iter));
+                        float nvariance = variances[i] / (1 - std::pow(beta2, iter));
+
+                        sites[i] = sites[i] - delta * nmean / (std::sqrt(nvariance) + eps);
+                    }
                 }
             }
         #endif
@@ -304,8 +338,9 @@ struct Voronoization
             std::fill(factors.begin(), factors.end(), 1);
             std::fill(areas.begin(), areas.end(), 0);
 
-            printf("iteration %d\n", iter);
+            // printf("iteration %d\n", iter);
         }
+        printf("voronoization %d done\n", (int)omp_get_thread_num());
     }
 };
 
@@ -337,14 +372,14 @@ Image draw_cells_kd( const Image& image, const std::vector<vec2>& sites )
     evaluate_colors( graph, image, colors );
 
     std::vector<Point2> points( graph.sites().size() );
-    #pragma omp for 
+    // #pragma omp for 
     for( int i = 0; i < (int)graph.sites().size(); ++i)
         points[i] = {graph.sites()[i].x, graph.sites()[i].y};
 
     KDTree2Color kdtree( points, colors );
 
     Image output(w, h);
-    #pragma omp for
+    // #pragma omp for
     for( int i = 0; i < w; ++i )
     for( int j = 0; j < h; ++j )
     {   
@@ -360,14 +395,14 @@ Image draw_cells_kd( const std::vector<vec2>& sites, const std::vector<Color>& c
     typedef kdtree::KDTree<Color, 2> KDTree2Color;
 
     std::vector<Point2> points( sites.size() );
-    #pragma omp for 
+    // #pragma omp for 
     for( int i = 0; i < (int)sites.size(); ++i)
         points[i] = { sites[i].x, sites[i].y };
 
     KDTree2Color kdtree( points, colors );
 
     Image output(w, h);
-    #pragma omp for
+    // #pragma omp for
     for( int i = 0; i < w; ++i )
     for( int j = 0; j < h; ++j )
     {   

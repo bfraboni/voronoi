@@ -41,7 +41,6 @@ namespace kdtree
 
         KDTree( const std::vector<point_type>& points, const std::vector<value_type>& values ) : data(points.size())
         {
-            #pragma omp for 
             for(int i = 0; i < (int)data.size(); ++i)
                 data[i] = KDData<T, N>( points[i], values[i], i );
 

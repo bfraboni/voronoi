@@ -30,6 +30,18 @@ struct Color
     float& operator() ( const unsigned int i ) { return (&r)[i]; }
     
     float r, g, b, a;
+
+    Color& operator+= ( const Color& c ) { r += c.r; g += c.g; b += c.b; a += c.a; return *this; }
+    Color& operator+= ( float k ) { r += k; g += k; b += k; a += k; return *this; }
+    
+    Color& operator-= ( const Color& c ) { r -= c.r; g -= c.g; b -= c.b; a -= c.a; return *this; }
+    Color& operator-= ( float k ) { r -= k; g -= k; b -= k; a -= k; return *this; }
+
+    Color& operator*= ( const Color& c ) { r *= c.r; g *= c.g; b *= c.b; a *= c.a; return *this; }
+    Color& operator*= ( float k ) { r *= k; g *= k; b *= k; a *= k; return *this; }
+
+    Color& operator/= ( const Color& c ) { r /= c.r; g /= c.g; b /= c.b; a /= c.a; return *this; }
+    Color& operator/= ( float k ) { r /= k; g /= k; b /= k; a /= k; return *this; }
 };
 
 //! utilitaire. renvoie une couleur noire.
