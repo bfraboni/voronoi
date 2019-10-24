@@ -40,6 +40,7 @@ void evaluate_colors(   const cinekine::voronoi::Graph& graph,
                         const Image& image,
                         std::vector<Color>& colors )
 {   
+    const float min_area = 4.f; 
     Dunavant dunavant(5);
     // #pragma omp for
     for(int i = 0; i < (int)graph.sites().size(); ++i)
@@ -67,13 +68,14 @@ void evaluate_colors(   const cinekine::voronoi::Graph& graph,
             for( int j = 0; j < dunavant.size(); ++j )
             {
                 vec2 uv = dunavant.point(j);
-                float w = dunavant.weight(j) * area;
+                float w = area > min_area ? dunavant.weight(j) * area : 1;
                 vec2 p = t.point( uv );
                 colors[site_id] = colors[site_id] + image.sample(p.x, p.y) * w;
             }
         }
         // normalize color
-        if( colors[site_id].a > 0 ) colors[site_id] = colors[site_id] / colors[site_id].a;
+        if( colors[site_id].a > 0 ) 
+            colors[site_id] = colors[site_id] / colors[site_id].a;
     }
 }
 
@@ -244,89 +246,25 @@ struct Voronoization
         #else
             // Nesterov optimistaion
             const float gamma = 0.9;
-            const float threshold = 0.8 ;
-            const float sigma_i = 1.5 ;
-            const float sigma_d = 1 / sigma_i ;
 
             // #pragma omp for
             for(int i = 0; i < size; ++i)
             {
-                // int cmp = 0;
-                // if( 
-                //     // areas[i] < 1e-4 || 
-                //     sites[i].x < 0 || 
-                //     sites[i].x >= w || 
-                //     sites[i].y < 0 || 
-                //     sites[i].y >= h )
-                // {
-                //     // reproject site at half the distance from the nearest
-                //     Point5 query = {sites[i].x, sites[i].y, colors[i].r, colors[i].g, colors[i].b};
-                //     auto nearest = kdtree.nearest_point( query );
-                //     sites[i] = 0.5 * ( sites[i] + vec2(nearest[0], nearest[1]) );
-                //     // ++cmp;
-                // }
-                // else
+                // Nesterov simple + optimisation w.r.t to cell area (small cells moves faster)
+                sites[i] = sites[i] - delta * 2.f / std::sqrt(areas[i]) * (gamma * normalize(old_gradients[i]) + normalize(gradients[i]));
+                
+                // take out of bounds cells back in
+                if( sites[i].x < 0 || sites[i].x >= w )
                 {
-                    if( 0 )
-                    {
-                        const vec2& grad = gradients[i]; 
-                        float norm = length(grad);
-                        if( norm == 0 ) continue;
-                        
-                        if((i+iter)%10 == 0) 
-                            factors[i] = 1 ;
-                        const vec2& old_grad = old_gradients[i];
-                        float old_norm = length(old_grad);
+                    float rd = distribution(rng) * delta0;
+                    sites[i].x = std::min(w - rd, std::max(rd, sites[i].x));
+                }
 
-                        if(old_norm != 0) 
-                        {
-                            float oscil = dot(grad, old_grad);
-                            oscil /= norm * old_norm ;
-                            if(oscil > threshold) 
-                            {
-                                factors[i] *= sigma_i ;
-                            } 
-                            else if(oscil < -threshold) 
-                            {
-                                factors[i] *= sigma_d ;
-                            }
-                        }
-
-                        // sites[i] = sites[i] - factors[i] * delta * normalize(grad);
-                        // normalize with cella area ...
-                        // sites[i] = sites[i] - factors[i] * 0.5 * std::sqrt( areas[i] ) * delta * grad / norm;
-                        // Nesterov adaptative
-                        sites[i] = sites[i] - delta * factors[i] * (gamma * normalize(old_gradients[i]) + normalize(gradients[i]));
-                    } 
-                    else if( 1 )
-                    {
-                        // Nesterov simple + optimisation w.r.t to cell area (small cells moves faster)
-                        sites[i] = sites[i] - delta * 2.f / std::sqrt(areas[i]) * (gamma * normalize(old_gradients[i]) + normalize(gradients[i]));
-                        
-                        if( sites[i].x < 0 || sites[i].x >= w )
-                        {
-                            float rd = distribution(rng) * delta0;
-                            sites[i].x = std::min(w - rd, std::max(rd, sites[i].x));
-                        }
-
-                        if( sites[i].y < 0 || sites[i].y >= h )
-                        {
-                            float rd = distribution(rng) * delta0;
-                            sites[i].y = std::min(w - rd, std::max(rd, sites[i].y));
-                        }
-                    }
-                    else
-                    {
-                        // adam method  
-                        // vec2 g = normalize(gradients[i]);
-                        means[i] = beta1 * means[i] + (1 - beta1) * gradients[i];
-                        variances[i] = beta2 * variances[i] + (1 - beta2) * dot(gradients[i], gradients[i]);
-
-                        vec2 nmean = means[i] / (1 - std::pow(beta1, iter));
-                        float nvariance = variances[i] / (1 - std::pow(beta2, iter));
-
-                        sites[i] = sites[i] - delta * nmean / (std::sqrt(nvariance) + eps);
-                    }
+                // take out of bounds cells back in
+                if( sites[i].y < 0 || sites[i].y >= h )
+                {
+                    float rd = distribution(rng) * delta0;
+                    sites[i].y = std::min(w - rd, std::max(rd, sites[i].y));
                 }
             }
         #endif

@@ -63,10 +63,10 @@ int main( int argc, char * argv[] )
     const int total_frames = 2 * fixed_frames + moving_frames;
 
     #pragma omp parallel for
-    for( int i = 0; i < (int)images.size()-1; ++i )
+    for( int i = 0; i < (int)images.size(); ++i )
     {
         const int curr = i;
-        const int next = i+1;
+        const int next = (i+1)%images.size();
 
         typedef kdtree::Point<5> Point5;
 
