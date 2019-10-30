@@ -28,11 +28,6 @@ struct Transport
         distribution(0.f, 1.f)
     {}
 
-    bool converged()
-    {
-        return true;
-    }
-
     point_type random_direction()
     {
         point_type p;

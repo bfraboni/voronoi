@@ -235,14 +235,14 @@ struct Voronoization
             evaluate_gradient( graph, colors, image, gradients );
 
             // kdtree construction
-            typedef kdtree::Point<5> Point5;
-            typedef kdtree::KDTree<float, 5> KDTree;
-            std::vector<Point5> points( graph.sites().size() );
-            #pragma omp parallel for 
-            for( int i = 0; i < (int)graph.sites().size(); ++i)
-                points[i] = {sites[i].x, sites[i].y, colors[i].r, colors[i].g, colors[i].b};
+            // typedef kdtree::Point<5> Point5;
+            // typedef kdtree::KDTree<float, 5> KDTree;
+            // std::vector<Point5> points( graph.sites().size() );
+            // #pragma omp parallel for 
+            // for( int i = 0; i < (int)graph.sites().size(); ++i)
+            //     points[i] = {sites[i].x, sites[i].y, colors[i].r, colors[i].g, colors[i].b};
 
-            KDTree kdtree( points, areas );
+            // KDTree kdtree( points, areas );
 
             // move sites in the gradient direction
             const float exp = iter / (max_iter - iter);
