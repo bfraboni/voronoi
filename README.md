@@ -46,9 +46,8 @@ Given the pairwise matching we can interpolate (linearly or not) any number of t
 * We use a 2D KD-tree to assign each cell color to its nearest pixels.
 
 
-Special thanks to coworkers ot the LIRIS room 12.008, and assimilated for feedback and permissions to put images here.
-- Axel Paris
-- Gabriel Meynet 
-- Charles Barnouin
-- Oscar Argudo
-- Lois Paulin
+Special thanks to coworkers ot the LIRIS room 12.008, and assimilated for discussions, feedback and permission to put their face here.
+
+|Axel Paris|Gabriel Meynet|Charles Barnouin|Oscar Argudo|Lois Paulin|
+|:---:|:---:|:---:|:---:|:---:|
+![](data/voronoi-0.png)|![](data/voronoi-3.png)|![](data/voronoi-2.png)|![](data/voronoi-5.png)|![](data/voronoi-4.png)|
