@@ -10,6 +10,11 @@ So did I. The final process I came with is a three step algorithm:
 2. find pairwise matching between two voronois maps
 3. reconstruct a smooth transition using interpolation
 
+And Tadaaaa:
+![](data/output.gif)
+
+[Here](data/output-lab-small.mp4) is a longer HD video. 
+
 ## Image Voronoization
 The first step is based on the geometry paper [**Approximating Functions on a Mesh with Restricted Voronoï Diagrams**](http://alice.loria.fr/index.php/publications.html?redirect=0&Paper=VoronoiApprox@2013) by Vincent Nivoliers and Bruno Lévy. Starting with an initial set of random sites that define a Voronoi diagram, the algorithm aligns the boundaries of the Voronoi cells with the discontinuities of the input image. The associated gradient descent is a semi-discrete process that minimizes the squared difference between the original image and its Voronoi map approximation.
 
