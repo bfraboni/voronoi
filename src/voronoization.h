@@ -14,9 +14,9 @@
 #include "voronoi.hpp"
 #include "legendre.hpp"
 
+// generate sites position randomly
 std::vector<vec2> init( const int w, const int h, const int size, std::mt19937& rng, std::uniform_real_distribution<float>& distribution )
 {
-    // generate sites position randomly
     std::vector<vec2> sites;
     for(int i = 0; i < size; i++)
         sites.push_back(vec2(distribution(rng) * w, distribution(rng) * h));
@@ -42,7 +42,6 @@ void evaluate_colors(   const cinekine::voronoi::Graph& graph,
 {   
     const float min_area = 1.f; 
     Dunavant dunavant(2);
-    // #pragma omp for
     for(int i = 0; i < (int)graph.sites().size(); ++i)
     {   
         // get current site / cell info
@@ -92,7 +91,6 @@ void evaluate_colors(   const cinekine::voronoi::Graph& graph,
 void evaluate_areas( const cinekine::voronoi::Graph& graph, std::vector<float>& areas )
 {   
     Dunavant dunavant(5);
-    // #pragma omp for
     for(int i = 0; i < (int)graph.sites().size(); ++i)
     {   
         // get current site / cell info
@@ -125,9 +123,7 @@ void evaluate_gradient(     const cinekine::voronoi::Graph& graph,
     // foreach cell of the voronoi diagram compute the gradient of the objective function over edges
     typedef Rosetta::GaussLegendreQuadrature<vec2, 3> Legendre;
     Legendre legendre;
-    // std::vector<vec2> gradients((int)graph.sites().size(), vec2::zero());
 
-    // #pragma omp for
     for(int i = 0; i < (int)graph.sites().size(); ++i)
     {   
         // get current site / cell info
@@ -156,30 +152,29 @@ void evaluate_gradient(     const cinekine::voronoi::Graph& graph,
             // if normal is ill-oriented
             if( dot(n, (pk - p0)) < 0 ) n = -n;
 
-            // lambda function for edge integration 
+            // lambda function for edge gradient integration 
             auto objective = [&pl, &pk, &n, site_id, neighbor_id, &image, &colors]( const vec2& p ) -> vec2 
             { 
                 if( p.x < 0 || p.x >= image.width() || p.y < 0 || p.y >= image.height() ) return vec2(0, 0);
 
                 // image gradient term
                 const Color& color_pixel = image.sample(p.x, p.y); 
-                 
+                
+                // site color gradient
                 const Color& color_current = colors[site_id];  
                 float gl = (color_pixel - color_current).length2();
+                
+                // neighbor color gradient
                 const Color& color_neighbor = colors[neighbor_id]; 
                 float gk = (color_pixel - color_neighbor).length2();
 
-                float g = gl - gk;
-
                 // speed vector term times gradient term
-                return g * (pl - p) / dot(n, (pl - pk));
+                return (gl - gk) * (pl - p) / dot(n, (pl - pk));
             };
 
             // integral of F(x) over the edge segment using quadrature
             gradients[cell.site] = gradients[cell.site] + legendre.integrate<>(p0, p1, objective);
         }
-        // normalize gradient
-        // gradients[cell.site] = normalize(gradients[cell.site]);
     }
 }
 
@@ -211,14 +206,7 @@ struct Voronoization
         std::vector<Color> old_colors( size, Black() );
         std::vector<vec2> gradients( size, vec2::zero() );
         std::vector<vec2> old_gradients( size, vec2::zero() );
-        std::vector<float> factors( size, 1 );
         std::vector<float> areas( size, 0 );
-
-        std::vector<vec2> means( size, vec2::zero() );
-        std::vector<float> variances( size, 0 );
-        const float beta1 = 0.9;
-        const float beta2 = 0.999;
-        const float eps = 1e-6;
 
         for(int iter = 0; iter < max_iter; ++iter)
         {
@@ -234,30 +222,13 @@ struct Voronoization
             // compute gradients
             evaluate_gradient( graph, colors, image, gradients );
 
-            // kdtree construction
-            // typedef kdtree::Point<5> Point5;
-            // typedef kdtree::KDTree<float, 5> KDTree;
-            // std::vector<Point5> points( graph.sites().size() );
-            // #pragma omp parallel for 
-            // for( int i = 0; i < (int)graph.sites().size(); ++i)
-            //     points[i] = {sites[i].x, sites[i].y, colors[i].r, colors[i].g, colors[i].b};
-
-            // KDTree kdtree( points, areas );
-
             // move sites in the gradient direction
             const float exp = iter / (max_iter - iter);
             const float delta = delta0 * std::pow(sigma, exp); 
 
-        #if 0
-            // classic gradient descenet
-            #pragma omp for
-            // for(int i = 0; i < this->size; ++i)
-            //     sites[i] = sites[i] - delta * gradients[i];
-        #else
             // Nesterov optimistaion
             const float gamma = 0.9;
 
-            // #pragma omp for
             for(int i = 0; i < size; ++i)
             {
                 // Nesterov simple + optimisation w.r.t to cell area (small cells moves faster)
@@ -277,16 +248,13 @@ struct Voronoization
                     sites[i].y = std::min(w - rd, std::max(rd, sites[i].y));
                 }
             }
-        #endif
 
             std::swap(gradients, old_gradients);
             std::swap(colors, old_colors);
             std::fill(gradients.begin(), gradients.end(), vec2::zero());
             std::fill(colors.begin(), colors.end(), Black());
-            std::fill(factors.begin(), factors.end(), 1);
             std::fill(areas.begin(), areas.end(), 0);
 
-            // printf("iteration %d\n", iter);
         }
         printf("voronoization %d done\n", (int)omp_get_thread_num());
     }
