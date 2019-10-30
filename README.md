@@ -1,6 +1,6 @@
 # Voronoi
 
-I was surfing the internet during summer 2019 when I found this codegolf thread: [Draw an Image as a Voronoi Map](https://codegolf.stackexchange.com/questions/50299/draw-an-image-as-a-voronoi-map). I was curious to try some image "voronoization" myself, so I tried several of the provided solutions, especially the simple C++ one by Boojum. Then, I started to wonder if I could:
+I was surfing the internet during summer 2019 when I found this codegolf thread: [Draw an Image as a Voronoi Map](https://codegolf.stackexchange.com/questions/50299/draw-an-image-as-a-voronoi-map). I was curious to do some image "voronoization" myself, so I tried several of the provided solutions, especially the simple C++ one by Boojum. Then, I started to wonder if I could:
 - obtain a better minimization between the original image and the target reconstructed voronoi map,
 - speed up the process a bit (Boojum answer was short but overlong),
 - and eventually use the output voronoi map to make transitions (interpolation) between two voronoi maps. 
@@ -49,10 +49,10 @@ Given the pairwise matching we can interpolate (linearly or not) any number of t
 * The interpolation is done in normalized 5D space, each component is remapped to [0,1]. 
 * Colorspace supported: RGB, HSV, LAB, YUV, but any other color spaces could be used. 
 * The reconstruction distance can be any P-Distance, the default one is the Euclidean distance (2-distance).
-* We use a 2D KD-tree to assign each cell color to its nearest pixels.
+* Use a 2D KD-tree to assign each cell color to its nearest pixels.
 
 
-Special thanks to coworkers ot the LIRIS room 12.008, and assimilated for discussions, feedback and permission to put their face here.
+Special thanks to coworkers from the LIRIS room 12.008, and assimilated (:) for discussions, feedback and permission to put their face here.
 
 |Axel Paris|Gabriel Meynet|Charles Barnouin|Oscar Argudo|Lois Paulin|
 |:---:|:---:|:---:|:---:|:---:|
