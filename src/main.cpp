@@ -105,15 +105,6 @@ int main( int argc, char * argv[] )
                 color_next.r /= 360.f;
             }
 
-            // HSL space
-            if( 0 )
-            {
-                color_curr = rgb2hsl(colors_curr[j]);
-                color_curr.r /= 360.f;
-                color_next = rgb2hsl(colors_next[j]);
-                color_next.r /= 360.f;
-            }
-
             // YUV space
             if( 0 )
             {
@@ -170,10 +161,6 @@ int main( int argc, char * argv[] )
                 // HSV space
                 if( 0 )
                     colors[k] = hsv2rgb(Color( points[k][2]*360.f, points[k][3], points[k][4] )); 
-                
-                // HSL space
-                if( 0 )
-                    colors[k] = hsl2rgb(Color( points[k][2]*360.f, points[k][3], points[k][4] )); 
 
                 // YUV space
                 if( 0 )
@@ -192,6 +179,8 @@ int main( int argc, char * argv[] )
             }
 
             Image voronoi = draw_cells_kd( sites, colors, w, h );
+            // Image voronoi = draw_cells_kd_manhattan( sites, colors, w, h );
+            // Image voronoi = draw_cells_kd_minkowski( sites, colors, w, h );
             Image graph = draw_graph( voronoi, sites );
             std::stringstream ss;
             ss << output_path << "smooth-" << std::setfill('0') << std::setw(3) << frame << ".png";

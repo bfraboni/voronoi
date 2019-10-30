@@ -360,6 +360,75 @@ Image draw_cells_kd( const std::vector<vec2>& sites, const std::vector<Color>& c
     return output;
 }
 
+Image draw_cells_kd_manhattan( const std::vector<vec2>& sites, const std::vector<Color>& colors, const int w, const int h )
+{
+    typedef kdtree::Point<2> Point2;
+    typedef kdtree::KDTree<Color, 2, 1> KDTree2Color;
+
+    std::vector<Point2> points( sites.size() );
+    // #pragma omp for 
+    for( int i = 0; i < (int)sites.size(); ++i)
+        points[i] = { sites[i].x, sites[i].y };
+
+    KDTree2Color kdtree( points, colors );
+
+    Image output(w, h);
+    // #pragma omp for
+    for( int i = 0; i < w; ++i )
+    for( int j = 0; j < h; ++j )
+    {   
+        Point2 pixel = {float(i), float(j)};
+        output(i, j) = kdtree.nearest_value( pixel );
+    }
+    return output;
+}
+
+Image draw_cells_kd_tchebychev( const std::vector<vec2>& sites, const std::vector<Color>& colors, const int w, const int h )
+{
+    typedef kdtree::Point<2> Point2;
+    typedef kdtree::KDTree<Color, 2, std::numeric_limits<int>::max()> KDTree2Color;
+
+    std::vector<Point2> points( sites.size() );
+    // #pragma omp for 
+    for( int i = 0; i < (int)sites.size(); ++i)
+        points[i] = { sites[i].x, sites[i].y };
+
+    KDTree2Color kdtree( points, colors );
+
+    Image output(w, h);
+    // #pragma omp for
+    for( int i = 0; i < w; ++i )
+    for( int j = 0; j < h; ++j )
+    {   
+        Point2 pixel = {float(i), float(j)};
+        output(i, j) = kdtree.nearest_value( pixel );
+    }
+    return output;
+}
+
+Image draw_cells_kd_minkowski( const std::vector<vec2>& sites, const std::vector<Color>& colors, const int w, const int h )
+{
+    typedef kdtree::Point<2> Point2;
+    typedef kdtree::KDTree<Color, 2, 4> KDTree2Color;
+
+    std::vector<Point2> points( sites.size() );
+    // #pragma omp for 
+    for( int i = 0; i < (int)sites.size(); ++i)
+        points[i] = { sites[i].x, sites[i].y };
+
+    KDTree2Color kdtree( points, colors );
+
+    Image output(w, h);
+    // #pragma omp for
+    for( int i = 0; i < w; ++i )
+    for( int j = 0; j < h; ++j )
+    {   
+        Point2 pixel = {float(i), float(j)};
+        output(i, j) = kdtree.nearest_value( pixel );
+    }
+    return output;
+}
+
 Color rgb2hsv(const Color& in)
 {
     Color         out;
