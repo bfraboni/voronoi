@@ -51,8 +51,8 @@ Given the pairwise matching we can interpolate (linearly or not) any number of t
 * The reconstruction distance can be any P-Distance, the default one is the Euclidean distance (2-distance).
 * Use a 2D KD-tree to assign each cell color to its nearest pixels.
 
-
-Special thanks to coworkers from the LIRIS room 12.008, and assimilated (:) for discussions, feedback and permission to put their face here.
+## Acknowledgments
+Special thanks to Vincent Nivoliers for our helpful discussions, coworkers from the LIRIS room 12.008 (and assimilated (:)) for discussions, feedback and permission to put their faces here.
 
 |Axel Paris|Gabriel Meynet|Charles Barnouin|Oscar Argudo|Lois Paulin|
 |:---:|:---:|:---:|:---:|:---:|
