@@ -9,6 +9,7 @@
 #include <omp.h>
 
 
+#include "colorspace.h"
 #include "voronoization.h"
 #include "transport.h"
 

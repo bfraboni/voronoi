@@ -48,4 +48,5 @@ struct Triangle
         return point(uv.x, uv.y);
     }
 };
+
 #endif

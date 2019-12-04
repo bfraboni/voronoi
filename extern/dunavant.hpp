@@ -2897,6 +2897,8 @@ inline void reference_to_physical_t3 ( double t[], int n, double ref[], double p
 //
 //  Reference Element T3:
 //
+/*  // fix compilation warning due to ascii draw
+//
 //    |
 //    1  3
 //    |  |\
@@ -2907,6 +2909,8 @@ inline void reference_to_physical_t3 ( double t[], int n, double ref[], double p
 //    0  1-----2
 //    |
 //    +--0--R--1-->
+//
+*/  // fix compilation warning due to ascii draw
 //
 //  Licensing:
 //
@@ -3032,13 +3036,14 @@ inline void timestamp ( )
 
   static char time_buffer[TIME_SIZE];
   const struct tm *tm;
-  size_t len;
+  // size_t len; // fix compilation warning
   time_t now;
 
   now = time ( NULL );
   tm = localtime ( &now );
 
-  len = strftime ( time_buffer, TIME_SIZE, "%d %B %Y %I:%M:%S %p", tm );
+  // len = strftime ( time_buffer, TIME_SIZE, "%d %B %Y %I:%M:%S %p", tm );
+  strftime ( time_buffer, TIME_SIZE, "%d %B %Y %I:%M:%S %p", tm );
 
   std::cout << time_buffer << "\n";
 

@@ -16,12 +16,12 @@ int main( int argc, char * argv[] )
         printf("usage : voronoi <sites> <iterations> <nb_input> <input> [path]");
 
     // parameters
-    const int size = atoi(argv[1]);
-    const int max_iter = atoi(argv[2]);
-    const int dtype = argc > 5 ? atoi(argv[5]) : 2;
+    const int size = std::atoi(argv[1]);
+    const int max_iter = std::atoi(argv[2]);
+    const int dtype = argc > 5 ? std::atoi(argv[5]) : 2;
 
     // i/o info
-    const int nb_images = atoi(argv[3]);
+    const int nb_images = std::atoi(argv[3]);
     std::vector<Image> images(nb_images); 
     for( int i = 0; i < nb_images; ++i )
         images[i] = read_image(argv[i+4]);

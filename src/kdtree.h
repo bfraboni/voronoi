@@ -196,9 +196,9 @@ namespace kdtree
         void print( const std::string& prefix, const int node, bool isleft )
         {
             if( node < 0 || node >= (int)nodes.size() ) return;
-            std::cout << prefix;
-            std::cout << (isleft ? "├──" : "└──" );
-            std::cout << node << " " << nodes[node].data.p;
+            std::cout   << prefix
+                        << (isleft ? "├──" : "└──" )
+                        << node << " " << nodes[node].data.p;
             print( prefix + (isleft ? "│   " : "    "), nodes[node].left, true);
             print( prefix + (isleft ? "│   " : "    "), nodes[node].right, false);
         }
