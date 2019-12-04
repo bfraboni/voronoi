@@ -42,6 +42,8 @@ struct Color
 
     Color& operator/= ( const Color& c ) { r /= c.r; g /= c.g; b /= c.b; a /= c.a; return *this; }
     Color& operator/= ( float k ) { r /= k; g /= k; b /= k; a /= k; return *this; }
+
+    static Color zero() { return Color(0,0,0,0); }
 };
 
 //! utilitaire. renvoie une couleur noire.

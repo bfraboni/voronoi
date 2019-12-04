@@ -58,7 +58,65 @@ Given the pairwise matching we can interpolate (linearly or not) any number of t
 * Use a 2D KD-tree to assign each cell color to its nearest pixels.
 
 ## Todo 
-* The interpolation can be done directly in the transport space.
+* Make a command line parser.
+* Add .svg support.
+* Try interpolation directly in the transport space.
+* Bicubic resampling image instead of bilinear.
+
+## Build instructions 
+
+### Dependencies
+The code uses the following dependencies:
+* SDL2 [link](https://www.libsdl.org/download-2.0.php)
+* SDL2_Image [link](https://www.libsdl.org/projects/SDL_image/)
+
+### Build
+* Build system: Premake [link](https://premake.github.io/download.html)
+
+#### Linux
+```
+premake4 gmake
+make
+```
+
+#### Windows
+```
+./premake4 vs2017 
+make
+```
+
+### Specific Windows
+You need to specify the path to the include and lib directory of the dependencies in the *premake4.lua* build file.
+
+An example file tree for windows build:
+```
+voronoi/
+    premake4/5          // binary
+    premake4.lua
+    data/
+    src/
+    bin/
+        SDL2.dll
+        SDL2_image.dll
+    extern/
+        visual/
+            bin/
+            include/
+                SDL2/
+                    SDL.h
+                    SDL_image.h
+            lib/
+                SDL2.lib
+                SDL2_image.lib
+                SDL2_main.lib
+```
+and the associated premake4 lines:
+```
+-- extern libs
+includedirs { "extern/visual/include" }
+libdirs { "extern/visual/lib" }
+links { "SDL2", "SDL2main", "SDL2_image" }
+```
 
 ## Acknowledgments
 Special thanks to Vincent Nivoliers for helpful discussions, coworkers from the LIRIS room 12.008 (and assimilated (:)) for discussions, feedback and permission to put their faces here.

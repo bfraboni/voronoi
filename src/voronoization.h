@@ -36,22 +36,21 @@ cinekine::voronoi::Graph build_graph( const std::vector<vec2>& sites, const int 
     return cinekine::voronoi::build(std::move(vsites), w, h);
 }
 
-void evaluate_colors(   const cinekine::voronoi::Graph& graph, 
-                        const Image& image,
-                        std::vector<Color>& colors )
+void evaluate_colors_areas( const cinekine::voronoi::Graph& graph, 
+                            const Image& image,
+                            std::vector<Color>& colors,
+                            std::vector<float>& areas )
 {   
-    const float min_area = 1.f; 
     Dunavant dunavant(2);
     for(int i = 0; i < (int)graph.sites().size(); ++i)
     {   
-        // get current site / cell info
+        // get current site - cell info
         const int site_id = i;
         const auto& site = graph.sites()[site_id];
         const int cell_id = site.cell;
         const auto& cell = graph.cells()[cell_id];
 
-        float wcell = 0;
-        Color ccell;
+        Color ccell = Color::zero();
         for(const auto& halfedge: cell.halfEdges)
         {
             // get current edge info
@@ -59,59 +58,36 @@ void evaluate_colors(   const cinekine::voronoi::Graph& graph,
             const auto& edge = graph.edges()[edge_id];
 
             // get triangle informations
-            vec2 p0(edge.p0.x, edge.p0.y);
-            vec2 p1(edge.p1.x, edge.p1.y);
-            vec2 p2(site.x, site.y);
-            Triangle t(p0, p1, p2);
+            Triangle t( vec2(edge.p0.x, edge.p0.y),
+                        vec2(edge.p1.x, edge.p1.y),
+                        vec2(site.x, site.y) );
             float area = t.area();
 
-            // evaluate the triangle color integral using Dunavant quadrature
-            Color ctriangle;
-            float wtriangle = 0;
+            // evaluate the triangle color using Dunavant triangle quadrature
+            // good property of Dunavant quadrature: sum_i w_i = 1
+            // no normalization needed
+            Color ctriangle = Color::zero();
             for( int j = 0; j < dunavant.size(); ++j )
             {
                 float w = dunavant.weight(j);
                 vec2 uv = dunavant.point(j);
                 vec2 p = t.point( uv );
                 ctriangle += image.sample(p.x, p.y) * w;
-                wtriangle += w;
             }
-            if( wtriangle > 0 ) ctriangle /= wtriangle;
+
+            if( ctriangle.a <= 0 ) ctriangle = Black();
 
             ccell += ctriangle * area;
-            wcell += area;
         }
-        // normalize color
-        if( wcell > 0 ) ccell /= wcell;
         
+        // cell area
+        areas[site_id] = ccell.a;
+
+        // normalize cell color
+        if( ccell.a > 0 ) ccell /= ccell.a;
+
+        // cell color
         colors[site_id] = ccell;
-    }
-}
-
-void evaluate_areas( const cinekine::voronoi::Graph& graph, std::vector<float>& areas )
-{   
-    Dunavant dunavant(5);
-    for(int i = 0; i < (int)graph.sites().size(); ++i)
-    {   
-        // get current site / cell info
-        const int site_id = i;
-        const auto& site = graph.sites()[site_id];
-        const int cell_id = site.cell;
-        const auto& cell = graph.cells()[cell_id];
-
-        for(const auto& halfedge: cell.halfEdges)
-        {
-            // get current edge info
-            const int edge_id = halfedge.edge;
-            const auto& edge = graph.edges()[edge_id];
-
-            // get triangle informations
-            vec2 p0(edge.p0.x, edge.p0.y);
-            vec2 p1(edge.p1.x, edge.p1.y);
-            vec2 p2(site.x, site.y);
-            Triangle t(p0, p1, p2);
-            areas[site_id] += t.area();
-        }
     }
 }
 
@@ -181,43 +157,38 @@ void evaluate_gradient(     const cinekine::voronoi::Graph& graph,
 struct Voronoization
 {
     std::vector<vec2> sites;
+    std::vector<Color> colors;
+    cinekine::voronoi::Graph graph;
+
     Voronoization(){};
 
-    Voronoization( const Image& image, const float size, const int max_iter )
-    {
-        printf("voronoization %d...\n", (int)omp_get_thread_num());
+    // cf:  Approximating Functions on a Mesh with Restricted Voronoï Diagrams, Nivoliers V, Lévy B, 2013
+    Voronoization( const Image& image, const float size, const int max_iter, const int seed = 1234 )
+    {        
         const int w = image.width();
         const int h = image.height();
+        // init sites randomly
+        std::mt19937 rng( seed );
+        std::uniform_real_distribution<float> distribution(0.f,1.f);
+        sites = init(w, h, size, rng, distribution);
+
+        // image voronoisation
+        colors = std::vector<Color>( size, Black() );
+        std::vector<Color> old_colors( size, Black() );
+        std::vector<vec2> gradients( size, vec2::zero() ), old_gradients( size, vec2::zero() );
+        std::vector<float> areas( size, 0 );
 
         // gradient descent params
         const float delta0 = 0.02f * std::sqrt(float(w * w + h * h)); 
         const float sigma = 0.5f; 
 
-        // init sites randomly
-        std::random_device dev;
-        std::mt19937 rng(dev());
-        std::uniform_real_distribution<float> distribution(0.f,1.f);
-        sites = init(w, h, size, rng, distribution);
-
-        // image voronoisation
-        // cf:  Approximating Functions on a Mesh with Restricted Voronoï Diagrams, Nivoliers V, Lévy B, 2013
-        cinekine::voronoi::Graph graph;
-        std::vector<Color> colors( size, Black() );
-        std::vector<Color> old_colors( size, Black() );
-        std::vector<vec2> gradients( size, vec2::zero() );
-        std::vector<vec2> old_gradients( size, vec2::zero() );
-        std::vector<float> areas( size, 0 );
-
         for(int iter = 0; iter < max_iter; ++iter)
         {
             // compute geometric Voronoi graph
-            cinekine::voronoi::Graph graph = build_graph( sites, w, h );
+            graph = build_graph( sites, w, h );
 
-            // compute sites colors
-            evaluate_colors( graph, image, colors );
-
-            // compute sites colors
-            evaluate_areas( graph, areas );
+            // compute cell colors and areas
+            evaluate_colors_areas( graph, image, colors, areas );
 
             // compute gradients
             evaluate_gradient( graph, colors, image, gradients );
@@ -254,9 +225,13 @@ struct Voronoization
             std::fill(gradients.begin(), gradients.end(), vec2::zero());
             std::fill(colors.begin(), colors.end(), Black());
             std::fill(areas.begin(), areas.end(), 0);
-
         }
-        printf("voronoization %d done\n", (int)omp_get_thread_num());
+
+        // compute geometric Voronoi graph
+        graph = build_graph( sites, w, h );
+
+        // compute cell colors and areas
+        evaluate_colors_areas( graph, image, colors, areas );
     }
 };
 
@@ -285,7 +260,8 @@ Image draw_cells_kd( const Image& image, const std::vector<vec2>& sites )
 
     auto graph = build_graph( sites, w, h );
     std::vector<Color> colors( sites.size(), Black() );
-    evaluate_colors( graph, image, colors );
+    std::vector<float> areas( sites.size(), 0 );
+    evaluate_colors_areas( graph, image, colors, areas );
 
     std::vector<Point2> points( graph.sites().size() );
     // #pragma omp for 

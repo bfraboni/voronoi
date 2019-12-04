@@ -71,5 +71,5 @@ project("voronoization")
 	language "C++"
 	kind "ConsoleApp"
 	targetdir "bin"
-	includedirs { "src/", "extern/" }
+	includedirs { "src/", "src/extern/" }
 	files { gkit_files , "src/main.cpp" }

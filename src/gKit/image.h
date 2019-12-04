@@ -77,7 +77,7 @@ public:
             + (*this)(ix, iy+1)   * ((1 - u) * v)
             + (*this)(ix+1, iy+1) * (u       * v);
     }
-    
+
     //! renvoie un pointeur sur le stockage des couleurs des pixels.
     const void * buffer( ) const
     {
@@ -104,6 +104,11 @@ public:
     {
         static Image image;
         return image;
+    }
+
+    void Clear()
+    {
+        std::fill(m_data.begin(), m_data.end(), Black());
     }
 
     void SavePPM( const char *aFilename )
