@@ -57,12 +57,6 @@ Given the pairwise matching we can interpolate (linearly or not) any number of t
 * The reconstruction distance can be any P-Distance, the default one is the Euclidean distance (2-distance).
 * Use a 2D KD-tree to assign each cell color to its nearest pixels.
 
-## Todo 
-* Make a command line parser.
-* Add .svg support.
-* Try interpolation directly in the transport space.
-* Bicubic resampling image instead of bilinear.
-
 ## Build instructions 
 
 ### Dependencies
@@ -124,3 +118,9 @@ Special thanks to Vincent Nivoliers for helpful discussions, coworkers from the 
 |Axel Paris|Gabriel Meynet|Charles Barnouin|Oscar Argudo|Lois Paulin|
 |:---:|:---:|:---:|:---:|:---:|
 ![](data/voronoi-0.png)|![](data/voronoi-3.png)|![](data/voronoi-2.png)|![](data/voronoi-5.png)|![](data/voronoi-4.png)|
+
+## Todo 
+* Make a command line parser.
+* Add .svg support.
+* Try interpolation directly in the transport space.
+* Bicubic resampling image instead of bilinear.
