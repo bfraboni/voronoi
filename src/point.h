@@ -58,7 +58,7 @@ namespace kdtree
     {
         Point<N> pt;
         for(int i = 0; i < N; ++i)
-                pt[i] = a[i] + b[i];
+            pt[i] = a[i] + b[i];
         return pt;
     }
 
@@ -145,15 +145,13 @@ namespace kdtree
     Point<N> lerp(const Point<N>& a, const Point<N>& b, const float t) 
     {
         Point<N> res;
+
+        if( t == 1 ) return b;
+        if( t == 0 ) return a;
+        
         for(int i = 0; i < N; ++i)
-        {
-            if( t == 1 )
-                res[i] = b[i];
-            else if( t == 0 )
-                res[i] = a[i];
-            else
-                res[i] = a[i] + t * (b[i] - a[i]);
-        }
+            res[i] = a[i] + t * (b[i] - a[i]);
+
         return res;
     }
 

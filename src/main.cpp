@@ -14,59 +14,6 @@
 
 int main( int argc, char * argv[] )
 {
-    // for(int i=1; i<argc; i++)
-    // {
-    //     std::string arg(argv[i]);
-
-    //     // print help string (at any position)
-    //     if(arg == "-h" || arg == "--help" || arg == "/?")
-    //     {
-    //         PrintHelp(argv);
-    //         return;
-    //     }
-
-    //     if(arg[0] != '-') // all our commands start with -
-    //     {
-    //         continue;
-    //     }
-    //     else if(arg == "-i") // number of iterations to run
-    //     {
-    //         if(++i == argc)
-    //         {
-    //             printf("Missing <iteration> argument, please see help (-h)\n");
-    //             return;
-    //         }
-
-    //         std::istringstream iss(argv[i]);
-    //         iss >> oConfig.mIterations;
-
-    //         if(iss.fail() || oConfig.mIterations < 1)
-    //         {
-    //             printf("Invalid <iteration> argument, please see help (-h)\n");
-    //             return;
-    //         }
-    //     }
-    //     else if(arg == "-t") // transport
-    //     {
-    //         if(++i == argc)
-    //         {
-    //             printf("Missing <time> argument, please see help (-h)\n");
-    //             return;
-    //         }
-
-    //         std::istringstream iss(argv[i]);
-    //         iss >> oConfig.mMaxTime;
-
-    //         if(iss.fail() || oConfig.mMaxTime < 0)
-    //         {
-    //             printf("Invalid <time> argument, please see help (-h)\n");
-    //             return;
-    //         }
-
-    //         oConfig.mIterations = -1; // time has precedence
-    //     }
-    // }
-
     if( argc < 5 )
     {
         printf("usage : voronoi <sites> <iteration> <nb_input> <input>\n");
@@ -115,7 +62,7 @@ int main( int argc, char * argv[] )
         write_image(graph, ss.str().c_str());
     }
 
-    if( 0 )
+    if( 1 )
     {
         // smooth transition interpolation
         const int fixed_frames = 15;
@@ -247,27 +194,53 @@ int main( int argc, char * argv[] )
 
             #pragma omp parallel for
             for( int j = 0; j < fixed_frames; ++j )
+            {
                 draw( points_curr, i * total_frames + j );
+                printf("frame %d\n", i * total_frames + j);
+            }
 
             // use result of transport
             Transport<Point5> transport(points_curr, points_next, max_iter);
-            transport.transport( );
-            std::vector<Point5> points( size );
-            for( int j = 0; j < moving_frames; ++j )
+
+            if( 0 )
             {
-                float t = j * step;
-                int id= 0;
-                for (const auto& pair : transport.tmap)
-                {   
-                    points[id] = lerp( points_curr[pair.first], points_next[pair.second], t );
-                    ++id;
+                // use OT to find point assignement and linearly interpolate
+                // transport.transport( );
+                // std::vector<Point5> points( size );
+                // for( int j = 0; j < moving_frames; ++j )
+                // {
+                //     float t = j * step;
+                //     int id= 0;
+                //     for (const auto& pair : transport.tmap)
+                //     {   
+                //         points[id] = lerp( points_curr[pair.first], points_next[pair.second], t );
+                //         ++id;
+                //     }
+                //     draw( points, i * total_frames + j + fixed_frames );
+                // }
+            }
+            else
+            {
+                // use OT to find Wasserstein barycenters to direclty interpolate in transport space
+
+                // #pragma omp parallel for
+                std::vector<Point5> points = points_curr;
+                for( int j = 0; j < moving_frames; ++j )
+                {
+                    float t = j * step;
+                    std::vector<Point5> points_out = transport.wasserstein_barycenters( t, &points );
+                    std::swap(points_out, points);
+                    draw( points, i * total_frames + j + fixed_frames );
+                    printf("frame %d\n", i * total_frames + j + fixed_frames);
                 }
-                draw( points, i * total_frames + j + fixed_frames );
             }
 
             #pragma omp parallel for
             for( int j = 0; j < fixed_frames; ++j )
+            {
                 draw( points_next, i * total_frames + j + fixed_frames + moving_frames );
+                printf("frame %d\n", i * total_frames + j + fixed_frames + moving_frames);
+            }
         }
     }
 
