@@ -41,7 +41,7 @@ void evaluate_colors_areas( const cinekine::voronoi::Graph& graph,
                             std::vector<Color>& colors,
                             std::vector<float>& areas )
 {   
-    Dunavant dunavant(2);
+    Dunavant dunavant(3);
     for(int i = 0; i < (int)graph.sites().size(); ++i)
     {   
         // get current site - cell info
@@ -77,14 +77,14 @@ void evaluate_colors_areas( const cinekine::voronoi::Graph& graph,
 
             if( ctriangle.a <= 0 ) ctriangle = Black();
 
-            ccell += ctriangle * area;
+            ccell += Color(ctriangle * area, area);
         }
         
         // cell area
         areas[site_id] = ccell.a;
 
         // normalize cell color
-        if( ccell.a > 0 ) ccell /= ccell.a;
+        ccell = ccell.a > 0 ? Color(ccell / ccell.a, 1) : Black();
 
         // cell color
         colors[site_id] = ccell;
@@ -180,10 +180,19 @@ struct Voronoization
 
         // gradient descent params
         const float delta0 = 0.02f * std::sqrt(float(w * w + h * h)); 
-        const float sigma = 0.5f; 
+        const float sigma = 0.5f;
+
+        // Nesterov optimistaion
+        const float gamma = 0.9;
 
         for(int iter = 0; iter < max_iter; ++iter)
         {
+            for(int i = 0; i < size; ++i)
+            {
+                float da = areas[i] > 0.005 ? 2.f / std::sqrt(areas[i]) : 1;
+                sites[i] = sites[i] - gamma * da * normalize(old_gradients[i]);
+            }
+
             // compute geometric Voronoi graph
             graph = build_graph( sites, w, h );
 
@@ -197,13 +206,12 @@ struct Voronoization
             const float exp = iter / (max_iter - iter);
             const float delta = delta0 * std::pow(sigma, exp); 
 
-            // Nesterov optimistaion
-            const float gamma = 0.9;
-
             for(int i = 0; i < size; ++i)
             {
                 // Nesterov simple + optimisation w.r.t to cell area (small cells moves faster)
-                sites[i] = sites[i] - delta * 2.f / std::sqrt(areas[i]) * (gamma * normalize(old_gradients[i]) + normalize(gradients[i]));
+                float da = areas[i] > 0.005 ? 2.f / std::sqrt(areas[i]) : 1;
+                sites[i] = sites[i] - delta * da * (gamma * normalize(old_gradients[i]) + normalize(gradients[i]));
+                // sites[i] = sites[i] - delta * (gamma * normalize(old_gradients[i]) + normalize(gradients[i]));
                 
                 // take out of bounds cells back in
                 if( sites[i].x < 0 || sites[i].x >= w )
@@ -221,7 +229,7 @@ struct Voronoization
             }
 
             std::swap(gradients, old_gradients);
-            std::swap(colors, old_colors);
+            // std::swap(colors, old_colors);
             std::fill(gradients.begin(), gradients.end(), vec2::zero());
             std::fill(colors.begin(), colors.end(), Black());
             std::fill(areas.begin(), areas.end(), 0);

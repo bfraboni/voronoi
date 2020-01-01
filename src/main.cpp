@@ -171,12 +171,12 @@ int main( int argc, char * argv[] )
                     // LAB space
                     if( 1 )
                     {
-                        colors[k] = lab2rgb(
+                        colors[k] = clamp(lab2rgb(
                             Color( 
                                 points[k][2]*100.f, 
                                 points[k][3]*256.f - 128.f, 
                                 points[k][4]*256.f - 128.f 
-                            )); 
+                            ))); 
                     }
                 }
 
@@ -202,22 +202,22 @@ int main( int argc, char * argv[] )
             // use result of transport
             Transport<Point5> transport(points_curr, points_next, max_iter);
 
-            if( 0 )
+            if( 1 )
             {
                 // use OT to find point assignement and linearly interpolate
-                // transport.transport( );
-                // std::vector<Point5> points( size );
-                // for( int j = 0; j < moving_frames; ++j )
-                // {
-                //     float t = j * step;
-                //     int id= 0;
-                //     for (const auto& pair : transport.tmap)
-                //     {   
-                //         points[id] = lerp( points_curr[pair.first], points_next[pair.second], t );
-                //         ++id;
-                //     }
-                //     draw( points, i * total_frames + j + fixed_frames );
-                // }
+                transport.transport( );
+                std::vector<Point5> points( size );
+                for( int j = 0; j < moving_frames; ++j )
+                {
+                    float t = j * step;
+                    int id= 0;
+                    for (const auto& pair : transport.tmap)
+                    {   
+                        points[id] = lerp( points_curr[pair.first], points_next[pair.second], t );
+                        ++id;
+                    }
+                    draw( points, i * total_frames + j + fixed_frames );
+                }
             }
             else
             {
