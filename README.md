@@ -10,7 +10,7 @@ So did I. The final process I came with is a three step algorithm:
 2. find pairwise matching between two voronois maps
 3. reconstruct a smooth transition using interpolation
 
-And Tadaaaa:
+And here is the result:
 
 ![](data/output.gif)
 
